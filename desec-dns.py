@@ -339,19 +339,19 @@ def sanitize_records(rtype, subname, rrset):
     :returns: list of DNS record contents
 
     """
-    if rtype == 'CNAME' and len(rrset) > 1:
+    if rtype == 'CNAME' and rrset and len(rrset) > 1:
         # Multiple CNAME records in the same rrest are not legal.
         raise ParameterError('Multiple CNAME records are not allowed.')
-    if rtype in ('CNAME', 'MX'):
+    if rtype in ('CNAME', 'MX') and rrset:
         # CNAME and MX records must end in a .
         rrset = [r + '.' if r[-1] != '.' else r for r in rrset]
     if rtype == 'CNAME' and subname == '':
         # CNAME in the zone apex can break the zone
         raise ParameterError('CNAME records in the zone apex are not allowed.')
-    if (rtype == 'NS' and any(['*' in r for r in rrset])):
+    if (rtype == 'NS' and rrset and any(['*' in r for r in rrset])):
         # Wildcard NS records do not play well with DNSSEC
         raise ParameterError('Wildcard NS records are not allowed.')
-    if rtype == 'TXT':
+    if rtype == 'TXT' and rrset:
         # TXT records must be in ""
         rrset = ['"' + r + '"' if r[0] != '"' or r[-1] != '"'
                  else r for r in rrset]
