@@ -90,6 +90,47 @@ class APIClient(object):
             response_data = None
         return (r.status_code, response_data)
 
+    def list_tokens(self):
+        """Return a list of all tokens
+
+        :returns: dict containing tokens and information about them
+
+        """
+        url = api_base_url + '/auth/tokens/'
+        code, data = self.query('GET', url)
+        if code == 200:
+            return data
+        else:
+            raise APIError('Unexpected error code {}'.format(code))
+
+    def create_token(self, name=''):
+        """Create a new authenticaion token.
+
+        :name: the name of the token
+        :returns: the newly created token
+
+        """
+        url = api_base_url + '/auth/tokens/'
+        code, data = self.query('POST', url, {'name': name})
+        if code == 201:
+            return data
+        else:
+            raise APIError('Unexpected error code {}'.format(code))
+
+    def delete_token(self, token_id):
+        """Delete an authentication token
+
+        :token_id: the unique id of the token to delete
+        :returns: nothing
+
+        """
+        url = api_base_url + '/auth/tokens/' + token_id + '/'
+        code, data = self.query('DELETE', url)
+        if code == 204:
+            pass
+        else:
+            raise APIError('Unexpected error code {}'.format(code))
+
     def list_domains(self):
         """Return a list of all registered domains
 
@@ -371,6 +412,16 @@ def main():
         help='file containing the API authentication token '
                        '(default: %(default)s)')
 
+    p = action.add_parser('list-tokens', help='list all authentication tokens')
+
+    p = action.add_parser('create-token',
+        help='create and return a new authentication token')
+    p.add_argument('--name', default='', help='token name')
+
+    p = action.add_parser('delete-token',
+        help='delete an authentication token')
+    p.add_argument('id', help='token d')
+
     p = action.add_parser('list-domains', help='list all registered domains')
 
     p = action.add_parser('domain-info', help='get information about a domain')
@@ -454,7 +505,21 @@ def main():
 
     try:
 
-        if arguments.action == 'list-domains':
+        if arguments.action == 'list-tokens':
+
+            tokens = api_client.list_tokens()
+            pprint(tokens)
+
+        elif arguments.action == 'create-token':
+
+            data = api_client.create_token(arguments.name)
+            print(data['token'])
+
+        elif arguments.action == 'delete-token':
+
+            data = api_client.delete_token(arguments.id)
+
+        elif arguments.action == 'list-domains':
 
             domains = api_client.list_domains()
             for d in domains:
