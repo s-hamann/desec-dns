@@ -90,6 +90,7 @@ class APIClient(object):
 
     def list_tokens(self):
         """Return a list of all tokens
+        See https://desec.readthedocs.io/en/latest/auth/tokens.html#retrieving-all-current-tokens
 
         :returns: dict containing tokens and information about them
 
@@ -103,6 +104,7 @@ class APIClient(object):
 
     def create_token(self, name=''):
         """Create a new authenticaion token.
+        See https://desec.readthedocs.io/en/latest/auth/tokens.html#create-additional-tokens
 
         :name: the name of the token
         :returns: the newly created token
@@ -117,6 +119,7 @@ class APIClient(object):
 
     def delete_token(self, token_id):
         """Delete an authentication token
+        See https://desec.readthedocs.io/en/latest/auth/tokens.html#delete-tokens
 
         :token_id: the unique id of the token to delete
         :returns: nothing
@@ -131,6 +134,7 @@ class APIClient(object):
 
     def list_domains(self):
         """Return a list of all registered domains
+        See https://desec.readthedocs.io/en/latest/dns/domains.html#listing-domains
 
         :returns: list of domain names
 
@@ -144,7 +148,7 @@ class APIClient(object):
 
     def domain_info(self, domain):
         """Return basic information about a domain
-        See https://desec.io/docs.html#domain-field-reference
+        See https://desec.readthedocs.io/en/latest/dns/domains.html#retrieving-a-specific-domain
 
         :domain: domain name
         :returns: dict containing domain information
@@ -161,7 +165,7 @@ class APIClient(object):
 
     def new_domain(self, domain):
         """Create a new domain
-        See https://desec.io/docs.html#domain-field-reference
+        See https://desec.readthedocs.io/en/latest/dns/domains.html#creating-a-domain
 
         :domain: domain name
         :returns: dict containing domain information
@@ -182,6 +186,7 @@ class APIClient(object):
 
     def delete_domain(self, domain):
         """Delete a domain
+        See https://desec.readthedocs.io/en/latest/dns/domains.html#deleting-a-domain
 
         :domain: domain name
         :returns: nothing
@@ -197,7 +202,7 @@ class APIClient(object):
     def get_records(self, domain, rtype=None, subname=None):
         """Return all records of a domain, possibly restricted to records of type `rtype` and
         subname `subname`
-        See https://desec.io/docs.html#rrset-field-reference
+        See https://desec.readthedocs.io/en/latest/dns/rrsets.html#retrieving-all-rrsets-in-a-zone
 
         :domain: domain name
         :rtype: DNS record type
@@ -217,7 +222,7 @@ class APIClient(object):
 
     def add_record(self, domain, rtype, subname, rrset, ttl):
         """Add a new RRset. There must not be a RRset for this domain-type-subname combination
-        See https://desec.io/docs.html#rrset-field-reference
+        See https://desec.readthedocs.io/en/latest/dns/rrsets.html#creating-an-rrset
 
         :domain: domain name
         :rtype: DNS record type
@@ -246,7 +251,7 @@ class APIClient(object):
     def change_record(self, domain, rtype, subname, rrset=None, ttl=None):
         """Change an existing RRset. Existing data is replaced by the provided `rrset` and `ttl`
         (if provided)
-        See https://desec.io/docs.html#rrset-field-reference
+        See https://desec.readthedocs.io/en/latest/dns/rrsets.html#modifying-an-rrset
 
         :domain: domain name
         :rtype: DNS record type
@@ -280,6 +285,7 @@ class APIClient(object):
 
     def delete_record(self, domain, rtype, subname, rrset=None):
         """Delete an existing RRset or records from an RRset
+        See https://desec.readthedocs.io/en/latest/dns/rrsets.html#deleting-an-rrset
 
         :domain: domain name
         :rtype: DNS record type
@@ -319,7 +325,6 @@ class APIClient(object):
         """Change an existing RRset or create a new one. Records are added to the existing records
         (if any). `ttl` is used only when creating a new record sets. For existing records sets,
         the existing TTL is kept.
-        See https://desec.io/docs.html#rrset-field-reference
 
         :domain: domain name
         :rtype: DNS record type
@@ -356,7 +361,7 @@ def print_records(rrset, **kwargs):
 def sanitize_records(rtype, subname, rrset):
     """Check the given DNS records for common errors and return a copy with fixed data. Raise an
     Exception if not all errors can be fixed.
-    See https://desec.io/docs.html#notes-on-certain-record-types
+    See https://desec.readthedocs.io/en/latest/dns/rrsets.html#notes
 
     :rtype: DNS record type
     :subname: DNS entry name

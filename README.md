@@ -49,7 +49,7 @@ Related Work
 ============
 
 * [deSEC.io - official website](https://desec.io/)
-* [deSEC.io DNS API documentation](https://desec.io/docs.html)
+* [deSEC.io DNS API documentation](https://desec.readthedocs.io/)
 * [deSEC.io stack](https://github.com/desec-io/desec-stack)
 * [deSEC.io API client](https://github.com/gerhard-tinned/desec-dns-api-cli)
 * [acmetool hook for DNS-based domain verification with deSEC.io](https://gist.github.com/s-hamann/e099bf0432f5c7f507e967b00b551e82)
