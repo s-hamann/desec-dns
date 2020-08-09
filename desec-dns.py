@@ -12,10 +12,9 @@ import requests
 
 
 api_base_url = 'https://desec.io/api/v1'
-record_types = ('A', 'AAAA', 'AFSDB', 'ALIAS', 'CAA', 'CERT', 'CNAME', 'DNAME',
-                'HINFO', 'KEY', 'LOC', 'MX', 'NAPTR', 'NS', 'OPENPGPKEY',
-                'PTR', 'RP', 'SSHFP', 'SRV', 'TKEY', 'TSIG', 'TLSA', 'SMIMEA',
-                'TXT', 'URI')
+record_types = ('A', 'AAAA', 'AFSDB', 'ALIAS', 'CAA', 'CERT', 'CNAME', 'DNAME', 'HINFO', 'KEY',
+                'LOC', 'MX', 'NAPTR', 'NS', 'OPENPGPKEY', 'PTR', 'RP', 'SSHFP', 'SRV', 'TKEY',
+                'TSIG', 'TLSA', 'SMIMEA', 'TXT', 'URI')
 
 ERR_INVALID_PARAMETERS = 3
 ERR_API = 4
@@ -80,8 +79,7 @@ class APIClient(object):
         else:
             params = None
             body = data
-        r = requests.request(method, url, auth=self._token_auth, params=params,
-                             json=body)
+        r = requests.request(method, url, auth=self._token_auth, params=params, json=body)
         if r.status_code == 401:
             raise AuthenticationError()
         try:
@@ -178,8 +176,7 @@ class APIClient(object):
         elif code == 403:
             raise APIError('Maximum number of domains reached')
         elif code == 409:
-            raise ParameterError('Could not create domain {} ({})'.
-                                format(domain, data))
+            raise ParameterError('Could not create domain {} ({})'.format(domain, data))
         else:
             raise APIError('Unexpected error code {}'.format(code))
 
@@ -198,8 +195,8 @@ class APIClient(object):
             raise APIError('Unexpected error code {}'.format(code))
 
     def get_records(self, domain, rtype=None, subname=None):
-        """Return all records of a domain, possibly restricted to records of
-        type `rtype` and subname `subname`
+        """Return all records of a domain, possibly restricted to records of type `rtype` and
+        subname `subname`
         See https://desec.io/docs.html#rrset-field-reference
 
         :domain: domain name
@@ -219,8 +216,7 @@ class APIClient(object):
             raise APIError('Unexpected error code {}'.format(code))
 
     def add_record(self, domain, rtype, subname, rrset, ttl):
-        """Add a new RRset. There must not be a RRset for this
-        domain-type-subname combination
+        """Add a new RRset. There must not be a RRset for this domain-type-subname combination
         See https://desec.io/docs.html#rrset-field-reference
 
         :domain: domain name
@@ -232,29 +228,24 @@ class APIClient(object):
 
         """
         url = api_base_url + '/domains/' + domain + '/rrsets/'
-        code, data = self.query('POST', url, {'subname': subname,
-                                              'type': rtype, 'records': rrset,
-                                              'ttl': ttl})
+        code, data = self.query('POST', url,
+                                {'subname': subname, 'type': rtype, 'records': rrset, 'ttl': ttl})
         if code == 201:
             return data
         elif code == 404:
             raise NotFoundError('Domain {} not found'.format(domain))
         elif code == 422:
-            raise ParameterError(
-                'Invalid RRset {rrset} for {rtype} record {subname}.{domain}'.
-                format(rrset=rrset, rtype=rtype, subname=subname,
-                       domain=domain))
+            raise ParameterError('Invalid RRset {rrset} for {rtype} record {subname}.{domain}'.
+                format(rrset=rrset, rtype=rtype, subname=subname, domain=domain))
         elif code == 400:
-            raise APIError('Could not create RRset {rrset} for {rtype} record '
-                           '{subname}.{domain}'.
-                           format(rrset=rrset, rtype=rtype, subname=subname,
-                                  domain=domain))
+            raise APIError('Could not create RRset {rrset} for {rtype} record {subname}.{domain}'.
+                           format(rrset=rrset, rtype=rtype, subname=subname, domain=domain))
         else:
             raise APIError('Unexpected error code {}'.format(code))
 
     def change_record(self, domain, rtype, subname, rrset=None, ttl=None):
-        """Change an existing RRset. Existing data is replaced by the provided
-        `rrset` and `ttl` (if provided)
+        """Change an existing RRset. Existing data is replaced by the provided `rrset` and `ttl`
+        (if provided)
         See https://desec.io/docs.html#rrset-field-reference
 
         :domain: domain name
@@ -265,8 +256,7 @@ class APIClient(object):
         :returns: dict representing the changed RRset
 
         """
-        url = (api_base_url + '/domains/' + domain + '/rrsets/' + subname +
-               '.../' + rtype + '/')
+        url = api_base_url + '/domains/' + domain + '/rrsets/' + subname + '.../' + rtype + '/'
         request_data = {}
         if rrset:
             request_data['records'] = rrset
@@ -276,20 +266,15 @@ class APIClient(object):
         if code == 200:
             return data
         elif code == 404:
-            raise NotFoundError(
-                'RRset {rrset} for {rtype} record {subname}.{domain} not '
-                'found'.format(rrset=rrset, rtype=rtype, subname=subname,
-                               domain=domain))
+            raise NotFoundError('RRset {rrset} for {rtype} record {subname}.{domain} not found'.
+                                format(rrset=rrset, rtype=rtype, subname=subname, domain=domain))
         elif code == 400:
             raise ParameterError(
-                'Missing data for changing RRset {rrset} for {rtype} record '
-                '{subname}.{domain}'.format(rrset=rrset, rtype=rtype,
-                                            subname=subname, domain=domain))
+                'Missing data for changing RRset {rrset} for {rtype} record {subname}.{domain}'.
+                format(rrset=rrset, rtype=rtype, subname=subname, domain=domain))
         elif code == 422:
-            raise ParameterError(
-                'Invalid RRset {rrset} for {rtype} record {subname}.{domain}'.
-                format(rrset=rrset, rtype=rtype, subname=subname,
-                       domain=domain))
+            raise ParameterError('Invalid RRset {rrset} for {rtype} record {subname}.{domain}'.
+                format(rrset=rrset, rtype=rtype, subname=subname, domain=domain))
         else:
             raise APIError('Unexpected error code {}'.format(code))
 
@@ -321,8 +306,7 @@ class APIClient(object):
             self.change_record(domain, rtype, subname, records_to_keep)
         else:
             # Nothing should be kept, delete the whole RRset
-            url = (api_base_url + '/domains/' + domain + '/rrsets/' + subname +
-                   '.../' + rtype + '/')
+            url = api_base_url + '/domains/' + domain + '/rrsets/' + subname + '.../' + rtype + '/'
             code, data = self.query('DELETE', url)
             if code == 204:
                 pass
@@ -332,9 +316,9 @@ class APIClient(object):
                 raise APIError('Unexpected error code {}'.format(code))
 
     def update_record(self, domain, rtype, subname, rrset, ttl=None):
-        """Change an existing RRset or create a new one. Records are added to
-        the existing records (if any). `ttl` is used only when creating a new
-        record sets. For existing records sets, the existing TTL is kept.
+        """Change an existing RRset or create a new one. Records are added to the existing records
+        (if any). `ttl` is used only when creating a new record sets. For existing records sets,
+        the existing TTL is kept.
         See https://desec.io/docs.html#rrset-field-reference
 
         :domain: domain name
@@ -370,8 +354,8 @@ def print_records(rrset, **kwargs):
 
 
 def sanitize_records(rtype, subname, rrset):
-    """Check the given DNS records for common errors and return a copy
-    with fixed data. Raise an Exception if not all errors can be fixed.
+    """Check the given DNS records for common errors and return a copy with fixed data. Raise an
+    Exception if not all errors can be fixed.
     See https://desec.io/docs.html#notes-on-certain-record-types
 
     :rtype: DNS record type
@@ -394,8 +378,7 @@ def sanitize_records(rtype, subname, rrset):
         raise ParameterError('Wildcard NS records are not allowed.')
     if rtype == 'TXT' and rrset:
         # TXT records must be in ""
-        rrset = ['"' + r + '"' if r[0] != '"' or r[-1] != '"'
-                 else r for r in rrset]
+        rrset = ['"' + r + '"' if r[0] != '"' or r[-1] != '"' else r for r in rrset]
     return rrset
 
 
@@ -409,17 +392,14 @@ def main():
     token.add_argument('--token', help='API authentication token')
     token.add_argument('--token-file',
         default=os.path.join(os.path.expanduser('~'), '.desec_auth_token'),
-        help='file containing the API authentication token '
-                       '(default: %(default)s)')
+        help='file containing the API authentication token (default: %(default)s)')
 
     p = action.add_parser('list-tokens', help='list all authentication tokens')
 
-    p = action.add_parser('create-token',
-        help='create and return a new authentication token')
+    p = action.add_parser('create-token', help='create and return a new authentication token')
     p.add_argument('--name', default='', help='token name')
 
-    p = action.add_parser('delete-token',
-        help='delete an authentication token')
+    p = action.add_parser('delete-token', help='delete an authentication token')
     p.add_argument('id', help='token d')
 
     p = action.add_parser('list-domains', help='list all registered domains')
@@ -437,35 +417,32 @@ def main():
     p.add_argument('domain', help='domain name')
     p.add_argument('-t', '--type', choices=record_types, metavar='TYPE',
         help='list only records of the given type')
-    p.add_argument('-s', '--subname',
-        help='list only records for the given subname')
+    p.add_argument('-s', '--subname', help='list only records for the given subname')
 
     p = action.add_parser('add-record', help='add a record set to the domain')
     p.add_argument('domain', help='domain name')
-    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE',
-        required=True, help='record type to add')
+    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE', required=True,
+        help='record type to add')
     p.add_argument('-s', '--subname', default='',
         help='subname to add, omit to add a record to the zone apex')
-    p.add_argument('-r', '--records', required=True, nargs='+',
-        metavar='RECORD', help='the DNS record(s) to add')
+    p.add_argument('-r', '--records', required=True, nargs='+', metavar='RECORD',
+        help='the DNS record(s) to add')
     p.add_argument('--ttl', type=int, default=3600,
         help='set the record\'s TTL (default: %(default)i seconds)')
 
-    p = action.add_parser('change-record',
-        help='change an existing record set')
+    p = action.add_parser('change-record', help='change an existing record set')
     p.add_argument('domain', help='domain name')
-    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE',
-        required=True, help='record type to change')
+    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE', required=True,
+        help='record type to change')
     p.add_argument('-s', '--subname', default='',
         help='subname to change, omit to change a record in the zone apex')
-    p.add_argument('-r', '--records', nargs='+', metavar='RECORD',
-        help='the new DNS record(s)')
+    p.add_argument('-r', '--records', nargs='+', metavar='RECORD', help='the new DNS record(s)')
     p.add_argument('--ttl', type=int, help='the new TTL')
 
     p = action.add_parser('delete-record', help='delete a record set')
     p.add_argument('domain', help='domain name')
-    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE',
-        required=True, help='record type to delete')
+    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE', required=True,
+        help='record type to delete')
     p.add_argument('-s', '--subname', default='',
         help='subname to delete, omit to delete a record from the zone apex')
     p.add_argument('-r', '--records', nargs='+', metavar='RECORD',
@@ -474,15 +451,14 @@ def main():
     p = action.add_parser('update-record',
         help='add entries, possibly to an existing record set')
     p.add_argument('domain', help='domain name')
-    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE',
-        required=True, help='record type to add')
+    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE', required=True,
+        help='record type to add')
     p.add_argument('-s', '--subname', default='',
         help='subname to add, omit to add a record to the zone apex')
-    p.add_argument('-r', '--records', nargs='+', required=True,
-        metavar='RECORD', help='the DNS records to add')
+    p.add_argument('-r', '--records', nargs='+', required=True, metavar='RECORD',
+        help='the DNS records to add')
     p.add_argument('--ttl', type=int, default=3600,
-        help='set the record\'s TTL, if creating a new record set '
-            '(default: %(default)i seconds)')
+        help='set the record\'s TTL, if creating a new record set (default: %(default)i seconds)')
 
     p = action.add_parser('export', help='export all records into a file')
     p.add_argument('domain', help='domain name')
@@ -541,49 +517,41 @@ def main():
 
         elif arguments.action == 'get-records':
 
-            data = api_client.get_records(arguments.domain, arguments.type,
-                               arguments.subname)
+            data = api_client.get_records(arguments.domain, arguments.type, arguments.subname)
             for rrset in data:
                 print_records(rrset)
 
         elif arguments.action == 'add-record':
 
-            arguments.records = sanitize_records(arguments.type,
-                                                 arguments.subname,
+            arguments.records = sanitize_records(arguments.type, arguments.subname,
                                                  arguments.records)
-            data = api_client.add_record(arguments.domain, arguments.type,
-                              arguments.subname, arguments.records,
-                              arguments.ttl)
+            data = api_client.add_record(arguments.domain, arguments.type, arguments.subname,
+                                         arguments.records, arguments.ttl)
             print_records(data)
 
         elif arguments.action == 'change-record':
 
-            arguments.records = sanitize_records(arguments.type,
-                                                 arguments.subname,
+            arguments.records = sanitize_records(arguments.type, arguments.subname,
                                                  arguments.records)
-            data = api_client.change_record(arguments.domain, arguments.type,
-                                 arguments.subname, arguments.records,
-                                 arguments.ttl)
+            data = api_client.change_record(arguments.domain, arguments.type, arguments.subname,
+                                            arguments.records, arguments.ttl)
             print_records(data)
 
         elif arguments.action == 'update-record':
 
-            arguments.records = sanitize_records(arguments.type,
-                                                 arguments.subname,
+            arguments.records = sanitize_records(arguments.type, arguments.subname,
                                                  arguments.records)
-            data = api_client.update_record(arguments.domain, arguments.type,
-                                 arguments.subname, arguments.records,
-                                 arguments.ttl)
+            data = api_client.update_record(arguments.domain, arguments.type, arguments.subname,
+                                            arguments.records, arguments.ttl)
             print_records(data)
 
         elif arguments.action == 'delete-record':
 
             if arguments.records:
-                arguments.records = sanitize_records(arguments.type,
-                                                     arguments.subname,
+                arguments.records = sanitize_records(arguments.type, arguments.subname,
                                                      arguments.records)
-            api_client.delete_record(arguments.domain, arguments.type,
-                                     arguments.subname, arguments.records)
+            api_client.delete_record(arguments.domain, arguments.type, arguments.subname,
+                                     arguments.records)
 
         elif arguments.action == 'export':
 
@@ -604,8 +572,7 @@ def main():
             if arguments.clear:
                 # Delete all existing records:
                 for r in api_client.get_records(arguments.domain):
-                    api_client.delete_record(arguments.domain, r['type'],
-                                             r['subname'])
+                    api_client.delete_record(arguments.domain, r['type'], r['subname'])
                 existing_records = []
             else:
                 existing_records = api_client.get_records(arguments.domain)
@@ -615,14 +582,13 @@ def main():
                         for x in existing_records]):
                     # The record set already exists, change it to match the
                     # imported data.
-                    api_client.change_record(arguments.domain, r['type'],
-                                             r['subname'], r['records'],
-                                             r['ttl'])
+                    api_client.change_record(arguments.domain, r['type'], r['subname'],
+                                             r['records'], r['ttl'])
                 else:
                     # There is no record set with the given type and subname,
                     # add a new one.
-                    api_client.add_record(arguments.domain, r['type'],
-                                          r['subname'], r['records'], r['ttl'])
+                    api_client.add_record(arguments.domain, r['type'], r['subname'],
+                                          r['records'], r['ttl'])
 
     except AuthenticationError as e:
         print('Invalid token.')
