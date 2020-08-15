@@ -25,6 +25,9 @@ A simple deSEC.io API client
 
 positional arguments:
   action
+    list-tokens         list all authentication tokens
+    create-token        create and return a new authentication token
+    delete-token        delete an authentication token
     list-domains        list all registered domains
     domain-info         get information about a domain
     new-domain          create a new domain
