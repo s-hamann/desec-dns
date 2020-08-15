@@ -10,6 +10,7 @@ Requirements
 
 * Python 3.4+ (may also work with Python 2.7)
 * [requests](https://github.com/requests/requests)
+* [cryptography](https://github.com/pyca/cryptography/) (optional, for high-level management of TLSA records)
 
 Usage
 =====
@@ -37,6 +38,11 @@ positional arguments:
     change-record       change an existing record set
     delete-record       delete a record set
     update-record       add entries, possibly to an existing record set
+    add-tlsa            add a TLSA record for a X.509 certificate (aka DANE),
+                        keeping any existing records
+    set-tlsa            set the TLSA record for a X.509 certificate (aka
+                        DANE), removing any existing records for the same
+                        port, protocol and subname
     export              export all records into a file
     import              import records from a file
 

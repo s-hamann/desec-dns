@@ -6,10 +6,20 @@ import argparse
 import json
 import os
 import sys
+from datetime import datetime
+from hashlib import sha256, sha512
 from pprint import pprint
 
 import requests
 
+try:
+    from cryptography import x509
+    from cryptography.hazmat.backends import default_backend
+    from cryptography.hazmat.primitives.serialization import Encoding
+    from cryptography.hazmat.primitives.serialization import PublicFormat
+    cryptography_available = True
+except ModuleNotFoundError:
+    cryptography_available = False
 
 api_base_url = 'https://desec.io/api/v1'
 record_types = ('A', 'AAAA', 'AFSDB', 'ALIAS', 'CAA', 'CERT', 'CNAME', 'DNAME', 'HINFO', 'KEY',
@@ -20,6 +30,7 @@ ERR_INVALID_PARAMETERS = 3
 ERR_API = 4
 ERR_AUTH = 5
 ERR_NOT_FOUND = 6
+ERR_TLSA_CHECK = 7
 
 
 class APIError(Exception):
@@ -42,6 +53,11 @@ class ParameterError(APIError):
     error_code = ERR_INVALID_PARAMETERS
 
 
+class TLSACheckError(APIError):
+    """Exception for TLSA record setup sanity check errors"""
+    error_code = ERR_TLSA_CHECK
+
+
 class TokenAuth(requests.auth.AuthBase):
 
     """Token-based authentication for requests"""
@@ -52,6 +68,57 @@ class TokenAuth(requests.auth.AuthBase):
     def __call__(self, r):
         r.headers['Authorization'] = 'Token ' + self.token
         return r
+
+
+class TLSAField(object):
+
+    """Abstract class for TLSA fields that handles numeric values and symbolic names
+    interchangably"""
+
+    def __init__(self, value):
+        try:
+            value = self.valid_values.index(str(value).upper())
+        except ValueError:
+            pass
+        self._value = int(value)
+        try:
+            self.valid_values[self._value]
+        except IndexError:
+            self._value = None
+
+    def __eq__(self, other):
+        if self._value is None:
+            return False
+        elif isinstance(other, int):
+            return self._value == other
+        elif isinstance(other, str):
+            return self.valid_values[self._value] == other.upper()
+        else:
+            return self._value == other._value
+
+    def __repr__(self):
+        if self._value is None:
+            return ''
+        else:
+            return self.valid_values[self._value]
+
+    def __int__(self):
+        return self._value
+
+
+class TLSAUsage(TLSAField):
+    """TLSA certificate usage information"""
+    valid_values = ['PKIX-TA', 'PKIX-EE', 'DANE-TA', 'DANE-EE']
+
+
+class TLSASelector(TLSAField):
+    """TLSA selector"""
+    valid_values = ['CERT', 'SPKI']
+
+
+class TLSAMatchType(TLSAField):
+    """TLSA match type"""
+    valid_values = ['FULL', 'SHA2-256', 'SHA2-512']
 
 
 class APIClient(object):
@@ -387,6 +454,80 @@ def sanitize_records(rtype, subname, rrset):
     return rrset
 
 
+def tlsa_record(file, usage=TLSAUsage('DANE-EE'), selector=TLSASelector('Cert'),
+                match_type=TLSAMatchType('SHA2-256'), check=True, subname=None, domain=None):
+    """Return the TLSA record for the given certificate, usage, selector and match_type.
+    Raise an Exception if the given parameters do not seem to make sense.
+
+    :file: Path to the X.509 certificate to generate the record for. PEM and DER encoded files work
+    :usage: Value of type TLSAUsage. See RFC 6698, Section 2.1.1
+    :selector: Value of type TLSASelector. See RFC 6698, Section 2.1.2
+    :match_type: Value of type TLSAMatchType. See RFC 6698, Section 2.1.3
+    :check: Whether to do sanity checks. Boolean.
+    :subname: Subname the TLSA record will be valid for. Only used when `check` is True.
+    :domain: Domain the TLSA record will be valid for. Only used when `check` is True.
+    :returns: A string containing the rrset data for a TLSA records for the given parameters.
+
+    """
+    # Read the certifiate from `file`.
+    with open(file, 'rb') as f:
+        cert_data = f.read()
+    # Parse the certificate.
+    if cert_data.startswith(b'-----BEGIN CERTIFICATE-----'):
+        # PEM format
+        cert = x509.load_pem_x509_certificate(cert_data, default_backend())
+    else:
+        # DER format
+        cert = x509.load_der_x509_certificate(cert_data, default_backend())
+
+    # Do some sanity checks.
+    if check:
+        # Check certificate expiration.
+        if cert.not_valid_after <= datetime.utcnow():
+            raise TLSACheckError('Certificate expired on {}'.format(cert.not_valid_after))
+        # Check is usage matches the certificate's CA status.
+        is_ca_cert = cert.extensions.get_extension_for_class(x509.BasicConstraints).value.ca
+        if (is_ca_cert and usage not in ['PKIX-TA', 'DANE-TA']):
+            raise TLSACheckError('CA certificate given for end entity usage. Please select a '
+                                 'different certificate or set usage to PKIX-TA or DANE-TA.')
+        elif (not is_ca_cert and usage not in ['PKIX-EE', 'DANE-EE']):
+            raise TLSACheckError('Non-CA certificate given for CA usage. Please select a '
+                                 'different certificate or set usage to PKIX-EE or DANE-EE.')
+        # Check if any SAN matches the subname + domain
+        san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+        if domain is not None:
+            if subname:
+                target_name = subname + '.' + domain
+            else:
+                target_name = domain
+            for name in san.value.get_values_for_type(x509.DNSName):
+                if name == target_name:
+                    break
+            else:
+                raise TLSACheckError('Certificate is valid for {sans}, but not {target_name}.'
+                    .format(sans=', '.join(san.value.get_values_for_type(x509.DNSName)),
+                            target_name=target_name))
+
+    # Determine what to put in the TLSA record.
+    if selector == 'SPKI':
+        # Only the DER encoded public key.
+        data = cert.public_key().public_bytes(encoding=Encoding.DER,
+                                              format=PublicFormat.SubjectPublicKeyInfo)
+    else:
+        # Full DER encoded certificate.
+        data = cert.public_bytes(encoding=Encoding.DER)
+
+    # Encode the data.
+    if match_type == 'Full':
+        data = data.hex()
+    elif match_type == 'SHA2-256':
+        data = sha256(data).hexdigest()
+    elif match_type == 'SHA2-512':
+        data = sha512(data).hexdigest()
+
+    return '{} {} {} {}'.format(int(usage), int(selector), int(match_type), data)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='A simple deSEC.io API client')
@@ -464,6 +605,69 @@ def main():
         help='the DNS records to add')
     p.add_argument('--ttl', type=int, default=3600,
         help='set the record\'s TTL, if creating a new record set (default: %(default)i seconds)')
+
+    if cryptography_available:
+        p = action.add_parser('add-tlsa',
+            help='add a TLSA record for a X.509 certificate (aka DANE), keeping any existing '
+                 'records')
+        p.add_argument('domain', help='domain name')
+        p.add_argument('-s', '--subname', default='',
+            help='subname that the record is valid for, omit to set a record to the zone apex')
+        p.add_argument('-p', '--ports', nargs='+', required=True,
+            help='ports that use the certificate')
+        p.add_argument('--protocol', choices=['tcp', 'udp', 'sctp'], default='tcp',
+            help='protocol that the given ports use (default: %(default)s)')
+        p.add_argument('-c', '--certificate', required=True,
+            help='file name of the X.509 certificate for which to set TLSA records (DER or PEM '
+                 'format)')
+        p.add_argument('--usage', type=TLSAUsage, default=TLSAUsage('DANE-EE'),
+            choices=['PKIX-TA', 'PKIX-EE', 'DANE-TA', 'DANE-EE'],
+            help='TLSA certificate usage information. Accepts numeric values or RFC 7218 symbolic '
+                 'names (default: %(default)s)')
+        p.add_argument('--selector', type=TLSASelector, default=TLSASelector('Cert'),
+            choices=['Cert', 'SPKI'],
+            help='TLSA selector. Accepts numeric values or RFC 7218 symbolic names '
+                 '(default: %(default)s)')
+        p.add_argument('--match-type', type=TLSAMatchType, default=TLSAMatchType('SHA2-256'),
+            choices=['Full', 'SHA2-256', 'SHA2-512'],
+            help='TLSA matching type. Accepts numeric values or RFC 7218 symbolic names '
+                 '(default: %(default)s)')
+        p.add_argument('--ttl', type=int, default=3600,
+            help='set the record\'s TTL, if creating a new record set '
+                 '(default: %(default)i seconds)')
+        p.add_argument('--no-check', action='store_false', dest='check', default=True,
+            help='skip any sanity checks and set the TLSA record as specified')
+
+        p = action.add_parser('set-tlsa',
+            help='set the TLSA record for a X.509 certificate (aka DANE), removing any existing '
+                 'records for the same port, protocol and subname')
+        p.add_argument('domain', help='domain name')
+        p.add_argument('-s', '--subname', default='',
+            help='subname that the record is valid for, omit to set a record to the zone apex')
+        p.add_argument('-p', '--ports', nargs='+', required=True,
+            help='ports that use the certificate')
+        p.add_argument('--protocol', choices=['tcp', 'udp', 'sctp'], default='tcp',
+            help='protocol that the given ports use (default: %(default)s)')
+        p.add_argument('-c', '--certificate', required=True,
+            help='file name of the X.509 certificate for which to set TLSA records (DER or PEM '
+                 'format)')
+        p.add_argument('--usage', type=TLSAUsage, default=TLSAUsage('DANE-EE'),
+            choices=['PKIX-TA', 'PKIX-EE', 'DANE-TA', 'DANE-EE'],
+            help='TLSA certificate usage information. Accepts numeric values or RFC 7218 symbolic '
+                 'names (default: %(default)s)')
+        p.add_argument('--selector', type=TLSASelector, default=TLSASelector('Cert'),
+            choices=['Cert', 'SPKI'],
+            help='TLSA selector. Accepts numeric values or RFC 7218 symbolic names '
+                 '(default: %(default)s)')
+        p.add_argument('--match-type', type=TLSAMatchType, default=TLSAMatchType('SHA2-256'),
+            choices=['Full', 'SHA2-256', 'SHA2-512'],
+            help='TLSA matching type. Accepts numeric values or RFC 7218 symbolic names '
+                 '(default: %(default)s)')
+        p.add_argument('--ttl', type=int, default=3600,
+            help='set the record\'s TTL, if creating a new record set '
+                 '(default: %(default)i seconds)')
+        p.add_argument('--no-check', action='store_false', dest='check', default=True,
+            help='skip any sanity checks and set the TLSA record as specified')
 
     p = action.add_parser('export', help='export all records into a file')
     p.add_argument('domain', help='domain name')
@@ -557,6 +761,28 @@ def main():
                                                      arguments.records)
             api_client.delete_record(arguments.domain, arguments.type, arguments.subname,
                                      arguments.records)
+
+        elif arguments.action == 'add-tlsa' or arguments.action == 'set-tlsa':
+
+            record = tlsa_record(arguments.certificate, arguments.usage, arguments.selector,
+                                 arguments.match_type, arguments.check, arguments.subname,
+                                 arguments.domain)
+
+            for port in arguments.ports:
+                subname = '_{port}._{protocol}.{subname}'.format(port=port,
+                                                                 protocol=arguments.protocol,
+                                                                 subname=arguments.subname)
+                if arguments.action == 'add-tlsa':
+                    data = api_client.update_record(arguments.domain, 'TLSA', subname, [record],
+                                                    arguments.ttl)
+                elif arguments.action == 'set-tlsa':
+                    if not api_client.get_records(arguments.domain, 'TLSA', subname):
+                        data = api_client.add_record(arguments.domain, 'TLSA', subname, [record],
+                                                     arguments.ttl)
+                    else:
+                        data = api_client.change_record(arguments.domain, 'TLSA', subname,
+                                                        [record], arguments.ttl)
+                print_records(data)
 
         elif arguments.action == 'export':
 
