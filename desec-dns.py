@@ -166,6 +166,8 @@ class APIClient(object):
         code, data = self.query('GET', url)
         if code == 200:
             return data
+        elif code == 403:
+            raise APIError('Insufficient permissions to manage tokens')
         else:
             raise APIError('Unexpected error code {}'.format(code))
 
@@ -185,6 +187,8 @@ class APIClient(object):
         code, data = self.query('POST', url, request_data)
         if code == 201:
             return data
+        elif code == 403:
+            raise APIError('Insufficient permissions to manage tokens')
         else:
             raise APIError('Unexpected error code {}'.format(code))
 
@@ -200,6 +204,8 @@ class APIClient(object):
         code, data = self.query('DELETE', url)
         if code == 204:
             pass
+        elif code == 403:
+            raise APIError('Insufficient permissions to manage tokens')
         else:
             raise APIError('Unexpected error code {}'.format(code))
 
