@@ -169,16 +169,20 @@ class APIClient(object):
         else:
             raise APIError('Unexpected error code {}'.format(code))
 
-    def create_token(self, name=''):
+    def create_token(self, name='', manage_tokens=None):
         """Create a new authenticaion token.
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#create-additional-tokens
 
         :name: the name of the token
+        :manage_tokens: boolean indicating whether the token can manage tokens
         :returns: the newly created token
 
         """
         url = api_base_url + '/auth/tokens/'
-        code, data = self.query('POST', url, {'name': name})
+        request_data = {'name': name}
+        if manage_tokens is not None:
+            request_data['perm_manage_tokens'] = manage_tokens
+        code, data = self.query('POST', url, request_data)
         if code == 201:
             return data
         else:
@@ -544,6 +548,8 @@ def main():
 
     p = action.add_parser('create-token', help='create and return a new authentication token')
     p.add_argument('--name', default='', help='token name')
+    p.add_argument('--manage-tokens', action='store_true', default=False,
+                   help='create a token that can manage tokens')
 
     p = action.add_parser('delete-token', help='delete an authentication token')
     p.add_argument('id', help='token d')
@@ -697,7 +703,7 @@ def main():
 
         elif arguments.action == 'create-token':
 
-            data = api_client.create_token(arguments.name)
+            data = api_client.create_token(arguments.name, arguments.manage_tokens)
             print(data['token'])
 
         elif arguments.action == 'delete-token':
