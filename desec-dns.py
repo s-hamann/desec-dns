@@ -31,6 +31,7 @@ ERR_API = 4
 ERR_AUTH = 5
 ERR_NOT_FOUND = 6
 ERR_TLSA_CHECK = 7
+ERR_RATE_LIMIT = 8
 
 
 class APIError(Exception):
@@ -56,6 +57,11 @@ class ParameterError(APIError):
 class TLSACheckError(APIError):
     """Exception for TLSA record setup sanity check errors"""
     error_code = ERR_TLSA_CHECK
+
+
+class RateLimitError(APIError):
+    """Exception for API rate limits"""
+    error_code = ERR_RATE_LIMIT
 
 
 class TokenAuth(requests.auth.AuthBase):
@@ -149,6 +155,8 @@ class APIClient(object):
         r = requests.request(method, url, auth=self._token_auth, params=params, json=body)
         if r.status_code == 401:
             raise AuthenticationError()
+        elif r.status_code == 429:
+            raise RateLimitError(r.json()['detail'])
         try:
             response_data = r.json()
         except ValueError:
