@@ -5,6 +5,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import datetime
 from hashlib import sha256, sha512
@@ -333,6 +334,24 @@ class APIClient(object):
         else:
             raise APIError('Unexpected error code {}'.format(code))
 
+    def update_bulk_record(self, domain, rrset_list):
+        """Updates rrsets in bulk.
+        See https://desec.readthedocs.io/en/latest/dns/rrsets.html#bulk-operations
+
+        :domain: domain name
+        :rrset_list: List of RRsets
+        """
+        url = api_base_url + '/domains/' + domain + '/rrsets/'
+        code, data = self.query('PUT', url, rrset_list)
+
+        if code == 200:
+            return data
+        elif code == 404:
+            raise NotFoundError('Domain {} not found'.format(domain))
+        else:
+            print(data)
+            raise APIError('Unexpected error code {}'.format(code))
+
     def change_record(self, domain, rtype, subname, rrset=None, ttl=None):
         """Change an existing RRset. Existing data is replaced by the provided `rrset` and `ttl`
         (if provided)
@@ -441,6 +460,11 @@ def print_records(rrset, **kwargs):
         line = ('{rrset[name]} {rrset[ttl]} IN {rrset[type]} {record}'
                 .format(rrset=rrset, record=r))
         print(line, **kwargs)
+
+
+def print_rrsets(rrsets, **kwargs):
+    for rrset in rrsets:
+        print_records(rrset, **kwargs)
 
 
 def sanitize_records(rtype, subname, rrset):
@@ -697,7 +721,12 @@ def main():
     p.add_argument('domain', help='domain name')
     p.add_argument('-f', '--file', required=True, help='target file name')
     p.add_argument('--clear', action='store_true',
-        help='remove all existing records before import')
+                   help='remove all existing records before import')
+
+    p = action.add_parser('import-zone', help='import records from a zone file')
+    p.add_argument('domain', help='domain name')
+    p.add_argument('-f', '--file', required=True, help='target file name')
+    p.add_argument('-d', '--dry-run', action='store_true', help='do not write parsed data to the API')
 
     arguments = parser.parse_args()
     del action, token, p, parser
@@ -840,6 +869,60 @@ def main():
                     # add a new one.
                     api_client.add_record(arguments.domain, r['type'], r['subname'],
                                           r['records'], r['ttl'])
+
+        elif arguments.action == 'import-zone':
+            with open(arguments.file, 'r') as f:
+                # regex to parse a line of a zone file
+                entry_regex = re.compile(
+                    r'^(?P<sub_name>.*?.)\s+(?P<ttl>[0-9]{3,5})\s+IN\s+(?P<type>[A-Z0-9]+)\s+(?P<record>.*)$')
+
+                record_dict = {}
+                for line in f.readlines():
+                    # skip comments
+                    if line.startswith(';'):
+                        continue
+
+                    print(f'\nProcessing line\n  {line}', end="")
+
+                    # parse a line
+                    matches = entry_regex.match(line)
+                    subname = matches.group("sub_name").removesuffix(arguments.domain + ".").removesuffix(".")
+                    ttl = int(matches.group("ttl"))
+                    rtype = matches.group("type")
+                    record = matches.group("record")
+
+                    if rtype not in record_types:
+                        print(f'Record type {rtype} not supported, skipping...')
+                        continue
+
+                    if ttl < 3600:
+                        print('TTL smaller than minimum of 3600 seconds, adjusting.')
+                        ttl = 3600
+
+                    records = sanitize_records(rtype, subname, [record])
+
+                    # place the record in a dict
+                    # the key is used for merging entries of the same type
+                    key = (subname, rtype, ttl)
+                    # if there is another entry with the same key, add the current record to the list and save the entry
+                    entry = record_dict.get(key, [])
+                    entry.extend(records)
+                    record_dict[key] = entry
+
+                # convert the dict back to a list for interacting with the API
+                record_list = []
+                for k, v in record_dict.items():
+                    subname, rtype, ttl = k
+                    record_list.append({'subname': subname, 'type': rtype, 'records': v, 'ttl': ttl})
+
+                if arguments.dry_run:
+                    print("\nDry run. Not writing changes to API. I would have written this:\n")
+                    pprint(record_list)
+                else:
+                    data = api_client.update_bulk_record(arguments.domain, record_list)
+                    print("\nSuccessfully wrote data:")
+                    print_rrsets(data)
+
 
     except AuthenticationError as e:
         print('Invalid token.')
