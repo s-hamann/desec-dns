@@ -22,9 +22,10 @@ except ModuleNotFoundError:
     cryptography_available = False
 
 api_base_url = 'https://desec.io/api/v1'
-record_types = ('A', 'AAAA', 'AFSDB', 'ALIAS', 'CAA', 'CERT', 'CNAME', 'DNAME', 'HINFO', 'KEY',
-                'LOC', 'MX', 'NAPTR', 'NS', 'OPENPGPKEY', 'PTR', 'RP', 'SSHFP', 'SRV', 'TKEY',
-                'TSIG', 'TLSA', 'SMIMEA', 'TXT', 'URI')
+record_types = ('A', 'AAAA', 'AFSDB', 'APL', 'CAA', 'CDNSKEY', 'CDS', 'CERT', 'CNAME', 'DHCID',
+                'DNAME', 'DNSKEY', 'DLV', 'DS', 'EUI48', 'EUI64', 'HINFO', 'HTTPS', 'KX', 'LOC',
+                'MX', 'NAPTR', 'NS', 'OPENPGPKEY', 'PTR', 'RP', 'SMIMEA', 'SPF', 'SRV', 'SSHFP',
+                'SVBC', 'TLSA', 'TXT', 'URI')
 
 ERR_INVALID_PARAMETERS = 3
 ERR_API = 4
@@ -446,7 +447,7 @@ def print_records(rrset, **kwargs):
 def sanitize_records(rtype, subname, rrset):
     """Check the given DNS records for common errors and return a copy with fixed data. Raise an
     Exception if not all errors can be fixed.
-    See https://desec.readthedocs.io/en/latest/dns/rrsets.html#notes
+    See https://desec.readthedocs.io/en/latest/dns/rrsets.html#caveats
 
     :rtype: DNS record type
     :subname: DNS entry name
@@ -455,9 +456,9 @@ def sanitize_records(rtype, subname, rrset):
 
     """
     if rtype == 'CNAME' and rrset and len(rrset) > 1:
-        # Multiple CNAME records in the same rrest are not legal.
+        # Multiple CNAME records in the same rrset are not legal.
         raise ParameterError('Multiple CNAME records are not allowed.')
-    if rtype in ('CNAME', 'MX') and rrset:
+    if rtype in ('CNAME', 'MX', 'NS') and rrset:
         # CNAME and MX records must end in a .
         rrset = [r + '.' if r[-1] != '.' else r for r in rrset]
     if rtype == 'CNAME' and subname == '':
