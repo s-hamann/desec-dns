@@ -178,7 +178,7 @@ class APIClient(object):
         elif code == 403:
             raise APIError('Insufficient permissions to manage tokens')
         else:
-            raise APIError('Unexpected error code {}'.format(code))
+            raise APIError(f'Unexpected error code {code}')
 
     def create_token(self, name='', manage_tokens=None):
         """Create a new authenticaion token.
@@ -199,7 +199,7 @@ class APIClient(object):
         elif code == 403:
             raise APIError('Insufficient permissions to manage tokens')
         else:
-            raise APIError('Unexpected error code {}'.format(code))
+            raise APIError(f'Unexpected error code {code}')
 
     def delete_token(self, token_id):
         """Delete an authentication token
@@ -216,7 +216,7 @@ class APIClient(object):
         elif code == 403:
             raise APIError('Insufficient permissions to manage tokens')
         else:
-            raise APIError('Unexpected error code {}'.format(code))
+            raise APIError(f'Unexpected error code {code}')
 
     def list_domains(self):
         """Return a list of all registered domains
@@ -230,7 +230,7 @@ class APIClient(object):
         if code == 200:
             return [domain['name'] for domain in data]
         else:
-            raise APIError('Unexpected error code {}'.format(code))
+            raise APIError(f'Unexpected error code {code}')
 
     def domain_info(self, domain):
         """Return basic information about a domain
@@ -245,9 +245,9 @@ class APIClient(object):
         if code == 200:
             return data
         elif code == 404:
-            raise NotFoundError('Domain {} not found'.format(domain))
+            raise NotFoundError(f'Domain {domain} not found')
         else:
-            raise APIError('Unexpected error code {}'.format(code))
+            raise APIError(f'Unexpected error code {code}')
 
     def new_domain(self, domain):
         """Create a new domain
@@ -262,13 +262,13 @@ class APIClient(object):
         if code == 201:
             return data
         elif code == 400:
-            raise ParameterError('Malformed domain name {}'.format(domain))
+            raise ParameterError(f'Malformed domain name {domain}')
         elif code == 403:
             raise APIError('Maximum number of domains reached')
         elif code == 409:
-            raise ParameterError('Could not create domain {} ({})'.format(domain, data))
+            raise ParameterError(f'Could not create domain {domain} ({data})')
         else:
-            raise APIError('Unexpected error code {}'.format(code))
+            raise APIError(f'Unexpected error code {code}')
 
     def delete_domain(self, domain):
         """Delete a domain
@@ -283,7 +283,7 @@ class APIClient(object):
         if code == 204:
             pass
         else:
-            raise APIError('Unexpected error code {}'.format(code))
+            raise APIError(f'Unexpected error code {code}')
 
     def get_records(self, domain, rtype=None, subname=None):
         """Return all records of a domain, possibly restricted to records of type `rtype` and
@@ -302,9 +302,9 @@ class APIClient(object):
         if code == 200:
             return data
         elif code == 404:
-            raise NotFoundError('Domain {} not found'.format(domain))
+            raise NotFoundError(f'Domain {domain} not found')
         else:
-            raise APIError('Unexpected error code {}'.format(code))
+            raise APIError(f'Unexpected error code {code}')
 
     def add_record(self, domain, rtype, subname, rrset, ttl):
         """Add a new RRset. There must not be a RRset for this domain-type-subname combination
@@ -324,7 +324,7 @@ class APIClient(object):
         if code == 201:
             return data
         elif code == 404:
-            raise NotFoundError('Domain {} not found'.format(domain))
+            raise NotFoundError(f'Domain {domain} not found')
         elif code == 422:
             raise ParameterError('Invalid RRset {rrset} for {rtype} record {subname}.{domain}'.
                 format(rrset=rrset, rtype=rtype, subname=subname, domain=domain))
@@ -332,7 +332,7 @@ class APIClient(object):
             raise APIError('Could not create RRset {rrset} for {rtype} record {subname}.{domain}'.
                            format(rrset=rrset, rtype=rtype, subname=subname, domain=domain))
         else:
-            raise APIError('Unexpected error code {}'.format(code))
+            raise APIError(f'Unexpected error code {code}')
 
     def change_record(self, domain, rtype, subname, rrset=None, ttl=None):
         """Change an existing RRset. Existing data is replaced by the provided `rrset` and `ttl`
@@ -367,7 +367,7 @@ class APIClient(object):
             raise ParameterError('Invalid RRset {rrset} for {rtype} record {subname}.{domain}'.
                 format(rrset=rrset, rtype=rtype, subname=subname, domain=domain))
         else:
-            raise APIError('Unexpected error code {}'.format(code))
+            raise APIError(f'Unexpected error code {code}')
 
     def delete_record(self, domain, rtype, subname, rrset=None):
         """Delete an existing RRset or records from an RRset
@@ -403,9 +403,9 @@ class APIClient(object):
             if code == 204:
                 pass
             elif code == 404:
-                raise NotFoundError('Domain {} not found'.format(domain))
+                raise NotFoundError(f'Domain {domain} not found')
             else:
-                raise APIError('Unexpected error code {}'.format(code))
+                raise APIError(f'Unexpected error code {code}')
 
     def update_record(self, domain, rtype, subname, rrset, ttl=None):
         """Change an existing RRset or create a new one. Records are added to the existing records
@@ -438,9 +438,8 @@ def print_records(rrset, **kwargs):
     :returns: nothing
 
     """
-    for r in rrset['records']:
-        line = ('{rrset[name]} {rrset[ttl]} IN {rrset[type]} {record}'
-                .format(rrset=rrset, record=r))
+    for record in rrset['records']:
+        line = (f'{rrset["name"]} {rrset["ttl"]} IN {rrset["type"]} {record}')
         print(line, **kwargs)
 
 
@@ -503,7 +502,7 @@ def tlsa_record(file, usage=TLSAUsage('DANE-EE'), selector=TLSASelector('Cert'),
     if check:
         # Check certificate expiration.
         if cert.not_valid_after <= datetime.utcnow():
-            raise TLSACheckError('Certificate expired on {}'.format(cert.not_valid_after))
+            raise TLSACheckError(f'Certificate expired on {cert.not_valid_after}')
         # Check is usage matches the certificate's CA status.
         is_ca_cert = cert.extensions.get_extension_for_class(x509.BasicConstraints).value.ca
         if (is_ca_cert and usage not in ['PKIX-TA', 'DANE-TA']):
@@ -523,9 +522,8 @@ def tlsa_record(file, usage=TLSAUsage('DANE-EE'), selector=TLSASelector('Cert'),
                 if name == target_name:
                     break
             else:
-                raise TLSACheckError('Certificate is valid for {sans}, but not {target_name}.'
-                    .format(sans=', '.join(san.value.get_values_for_type(x509.DNSName)),
-                            target_name=target_name))
+                sans = ', '.join(san.value.get_values_for_type(x509.DNSName))
+                raise TLSACheckError(f'Certificate is valid for {sans}, but not {target_name}.')
 
     # Determine what to put in the TLSA record.
     if selector == 'SPKI':
@@ -544,7 +542,7 @@ def tlsa_record(file, usage=TLSAUsage('DANE-EE'), selector=TLSASelector('Cert'),
     elif match_type == 'SHA2-512':
         data = sha512(data).hexdigest()
 
-    return '{} {} {} {}'.format(int(usage), int(selector), int(match_type), data)
+    return f'{int(usage)} {int(selector)} {int(match_type)} {int(data)}'
 
 
 def main():
@@ -790,9 +788,7 @@ def main():
                                  arguments.domain)
 
             for port in arguments.ports:
-                subname = '_{port}._{protocol}.{subname}'.format(port=port,
-                                                                 protocol=arguments.protocol,
-                                                                 subname=arguments.subname)
+                subname = f'_{port}._{arguments.protocol}.{arguments.subname}'
                 if arguments.action == 'add-tlsa':
                     data = api_client.update_record(arguments.domain, 'TLSA', subname, [record],
                                                     arguments.ttl)

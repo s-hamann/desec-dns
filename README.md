@@ -8,7 +8,7 @@ It can be used from the command line or as a Python module.
 Requirements
 ============
 
-* Python 3.4+ (may also work with Python 2.7)
+* Python 3.6+
 * [requests](https://github.com/requests/requests)
 * [cryptography](https://github.com/pyca/cryptography/) (optional, for high-level management of TLSA records)
 
