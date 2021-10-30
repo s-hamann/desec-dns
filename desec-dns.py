@@ -884,26 +884,55 @@ def main():
             with open(arguments.file, 'r') as f:
                 # Regex to parse a line of a zone file.
                 entry_regex = re.compile(
-                    r'''^(?P<name>.*?\.)\s+
-                    (?P<ttl>[0-9]{3,5})\s+
-                    IN\s+
+                    r'''^(?P<name>.*?||@)\s+
+                    (IN\s+)?
+                    (?P<ttl>[0-9]*)\s+
+                    (IN\s+)?
                     (?P<type>[A-Z0-9]+)\s+
                     (?P<record>.*)$''',
                     re.VERBOSE)
+                default_ttl_regex = re.compile(r'^\$TTL\s+(?P<ttl>[0-9]+)(\s+|$)')
+                default_ttl = None
                 minimum_ttl = api_client.domain_info(arguments.domain)['minimum_ttl']
 
                 # Parse the zone file into a (temporary) dict.
                 record_dict = {}
                 for line in f.readlines():
-                    # Skip comments.
-                    if line.startswith(';'):
+                    # Skip comments and empty lines.
+                    if line.startswith(';') or line.strip() == '':
+                        continue
+                    if line.startswith('$ORIGIN ' + arguments.domain):
+                        # Accept $ORIGIN for the domain given on the command line. We'll treat
+                        # relative names to be relative to that domain anyway.
+                        continue
+                    elif line.startswith('$ORIGIN '):
+                        raise ParameterError('$ORIGIN is not supported.')
+                    if line.startswith('$INCLUDE '):
+                        raise ParameterError('$INCLUDE is not supported.')
+
+                    # Parse default TTL definition line.
+                    matches = default_ttl_regex.match(line)
+                    if matches is not None:
+                        default_ttl = int(matches.group("ttl"))
                         continue
 
-                    # Parse a line.
+                    # Parse a "normal" line.
                     matches = entry_regex.match(line)
-                    subname = (matches.group("name").removesuffix(arguments.domain + ".")
-                               .removesuffix("."))
-                    ttl = int(matches.group("ttl"))
+                    if matches is None:
+                        raise ParameterError(f'Invalid line {line} in zone file.')
+
+                    # If name field is set, use it. Otherwise, inherit from the previous line.
+                    if matches.group("name"):
+                        subname = (matches.group("name").removesuffix(arguments.domain + ".")
+                                   .removesuffix("."))
+                    if subname == '@':
+                        subname = ''
+                    # If ttl field is set, use it. Otherwise, use the default TTL (if that is
+                    # defined) or inherit from the previous line.
+                    if matches.group("ttl"):
+                        ttl = int(matches.group("ttl"))
+                    elif default_ttl is not None:
+                        ttl = default_ttl
                     rtype = matches.group("type")
                     record = matches.group("record")
 
