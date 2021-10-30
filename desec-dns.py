@@ -347,11 +347,11 @@ class APIClient(object):
         if code == 200:
             return data
         elif code == 400:
-            raise APIError('Could not create RRsets. Errors: {}'.format(data))
+            raise APIError(f'Could not create RRsets. Errors: {data}')
         elif code == 404:
-            raise NotFoundError('Domain {} not found'.format(domain))
+            raise NotFoundError(f'Domain {domain} not found')
         else:
-            raise APIError('Unexpected error code {}'.format(code))
+            raise APIError(f'Unexpected error code {code}')
 
     def change_record(self, domain, rtype, subname, rrset=None, ttl=None):
         """Change an existing RRset. Existing data is replaced by the provided `rrset` and `ttl`
