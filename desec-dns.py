@@ -890,6 +890,7 @@ def main():
                     (?P<type>[A-Z0-9]+)\s+
                     (?P<record>.*)$''',
                     re.VERBOSE)
+                minimum_ttl = api_client.domain_info(arguments.domain)['minimum_ttl']
 
                 # Parse the zone file into a (temporary) dict.
                 record_dict = {}
@@ -910,10 +911,10 @@ def main():
                         print(f'Record type {rtype} not supported, skipping...', file=sys.stderr)
                         continue
 
-                    if ttl < 3600:
-                        print('TTL smaller than minimum of 3600 seconds, adjusting.',
+                    if ttl < minimum_ttl:
+                        print(f'TTL smaller than minimum of {minimum_ttl} seconds, adjusting.',
                               file=sys.stderr)
-                        ttl = 3600
+                        ttl = minimum_ttl
 
                     records = sanitize_records(rtype, subname, [record])
 
