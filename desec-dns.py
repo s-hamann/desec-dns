@@ -334,15 +334,25 @@ class APIClient(object):
         else:
             raise APIError('Unexpected error code {}'.format(code))
 
-    def update_bulk_record(self, domain, rrset_list):
+    def update_bulk_record(self, domain, rrset_list, exclusive=False):
         """Update RRsets in bulk.
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#bulk-operations
 
         :domain: domain name
         :rrset_list: List of RRsets
+        :exclusive: Boolean. If True, all DNS records not in rrset_list are removed.
         """
         url = api_base_url + '/domains/' + domain + '/rrsets/'
-        code, data = self.query('PUT', url, rrset_list)
+
+        if exclusive:
+            # Delete all records not in rrset_list by adding RRsets with empty an 'records'
+            # field for them.
+            existing_records = [(r['subname'], r['type']) for r in rrset_list]
+            for r in self.get_records(domain):
+                if (r['subname'], r['type']) not in existing_records:
+                    rrset_list.append({'subname': r['subname'], 'type': r['type'], 'records': []})
+
+        code, data = self.query('PATCH', url, rrset_list)
 
         if code == 200:
             return data
@@ -734,6 +744,8 @@ def main():
     p = action.add_parser('import-zone', help='import records from a zone file')
     p.add_argument('domain', help='domain name')
     p.add_argument('-f', '--file', required=True, help='target file name')
+    p.add_argument('--clear', action='store_true',
+                   help='remove all existing records before import')
     p.add_argument('-d', '--dry-run', action='store_true',
                    help='just parse zone data, but do not write it to the API')
 
@@ -968,7 +980,8 @@ def main():
                           file=sys.stderr)
                     pprint(record_list)
                 else:
-                    data = api_client.update_bulk_record(arguments.domain, record_list)
+                    data = api_client.update_bulk_record(arguments.domain, record_list,
+                                                         arguments.clear)
                     print_rrsets(data)
 
     except AuthenticationError as e:
