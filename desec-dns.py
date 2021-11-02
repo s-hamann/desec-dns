@@ -74,7 +74,7 @@ class TokenAuth(requests.auth.AuthBase):
         self.token = token
 
     def __call__(self, r):
-        r.headers['Authorization'] = 'Token ' + self.token
+        r.headers['Authorization'] = f'Token {self.token}'
         return r
 
 
@@ -172,7 +172,7 @@ class APIClient(object):
         :returns: dict containing tokens and information about them
 
         """
-        url = api_base_url + '/auth/tokens/'
+        url = f'{api_base_url}/auth/tokens/'
         code, data = self.query('GET', url)
         if code == 200:
             return data
@@ -190,7 +190,7 @@ class APIClient(object):
         :returns: the newly created token
 
         """
-        url = api_base_url + '/auth/tokens/'
+        url = f'{api_base_url}/auth/tokens/'
         request_data = {'name': name}
         if manage_tokens is not None:
             request_data['perm_manage_tokens'] = manage_tokens
@@ -210,7 +210,7 @@ class APIClient(object):
         :returns: nothing
 
         """
-        url = api_base_url + '/auth/tokens/' + token_id + '/'
+        url = f'{api_base_url}/auth/tokens/{token_id}/'
         code, data = self.query('DELETE', url)
         if code == 204:
             pass
@@ -226,7 +226,7 @@ class APIClient(object):
         :returns: list of domain names
 
         """
-        url = api_base_url + '/domains/'
+        url = f'{api_base_url}/domains/'
         code, data = self.query('GET', url)
         if code == 200:
             return [domain['name'] for domain in data]
@@ -241,7 +241,7 @@ class APIClient(object):
         :returns: dict containing domain information
 
         """
-        url = api_base_url + '/domains/' + domain + '/'
+        url = f'{api_base_url}/domains/{domain}/'
         code, data = self.query('GET', url)
         if code == 200:
             return data
@@ -258,7 +258,7 @@ class APIClient(object):
         :returns: dict containing domain information
 
         """
-        url = api_base_url + '/domains/'
+        url = f'{api_base_url}/domains/'
         code, data = self.query('POST', url, data={'name': domain})
         if code == 201:
             return data
@@ -279,7 +279,7 @@ class APIClient(object):
         :returns: nothing
 
         """
-        url = api_base_url + '/domains/' + domain + '/'
+        url = f'{api_base_url}/domains/{domain}/'
         code, data = self.query('DELETE', url)
         if code == 204:
             pass
@@ -297,7 +297,7 @@ class APIClient(object):
         :returns: list of dicts representing RRsets
 
         """
-        url = api_base_url + '/domains/' + domain + '/rrsets/'
+        url = f'{api_base_url}/domains/{domain}/rrsets/'
         code, data = self.query('GET', url,
                                 {'subname': subname, 'type': rtype})
         if code == 200:
@@ -319,7 +319,7 @@ class APIClient(object):
         :returns: dict representing the created RRset
 
         """
-        url = api_base_url + '/domains/' + domain + '/rrsets/'
+        url = f'{api_base_url}/domains/{domain}/rrsets/'
         code, data = self.query('POST', url,
                                 {'subname': subname, 'type': rtype, 'records': rrset, 'ttl': ttl})
         if code == 201:
@@ -343,7 +343,7 @@ class APIClient(object):
         :rrset_list: List of RRsets
         :exclusive: Boolean. If True, all DNS records not in rrset_list are removed.
         """
-        url = api_base_url + '/domains/' + domain + '/rrsets/'
+        url = f'{api_base_url}/domains/{domain}/rrsets/'
 
         if exclusive:
             # Delete all records not in rrset_list by adding RRsets with empty an 'records'
@@ -377,7 +377,7 @@ class APIClient(object):
         :returns: dict representing the changed RRset
 
         """
-        url = api_base_url + '/domains/' + domain + '/rrsets/' + subname + '.../' + rtype + '/'
+        url = f'{api_base_url}/domains/{domain}/rrsets/{subname}.../{rtype}/'
         request_data = {}
         if rrset:
             request_data['records'] = rrset
@@ -428,7 +428,7 @@ class APIClient(object):
             self.change_record(domain, rtype, subname, records_to_keep)
         else:
             # Nothing should be kept, delete the whole RRset
-            url = api_base_url + '/domains/' + domain + '/rrsets/' + subname + '.../' + rtype + '/'
+            url = f'{api_base_url}/domains/{domain}/rrsets/{subname}.../{rtype}/'
             code, data = self.query('DELETE', url)
             if code == 204:
                 pass
@@ -510,7 +510,7 @@ def sanitize_records(rtype, subname, rrset):
         raise ParameterError('Wildcard NS records are not allowed.')
     if rtype == 'TXT' and rrset:
         # TXT records must be in ""
-        rrset = ['"' + r + '"' if r[0] != '"' or r[-1] != '"' else r for r in rrset]
+        rrset = [f'"{r}"' if r[0] != '"' or r[-1] != '"' else r for r in rrset]
     return rrset
 
 
@@ -557,7 +557,7 @@ def tlsa_record(file, usage=TLSAUsage('DANE-EE'), selector=TLSASelector('Cert'),
         san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
         if domain is not None:
             if subname:
-                target_name = subname + '.' + domain
+                target_name = f'{subname}.{domain}'
             else:
                 target_name = domain
             for name in san.value.get_values_for_type(x509.DNSName):
