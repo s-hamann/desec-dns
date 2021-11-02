@@ -5,6 +5,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import datetime
 from hashlib import sha256, sha512
@@ -334,6 +335,35 @@ class APIClient(object):
         else:
             raise APIError(f'Unexpected error code {code}')
 
+    def update_bulk_record(self, domain, rrset_list, exclusive=False):
+        """Update RRsets in bulk.
+        See https://desec.readthedocs.io/en/latest/dns/rrsets.html#bulk-operations
+
+        :domain: domain name
+        :rrset_list: List of RRsets
+        :exclusive: Boolean. If True, all DNS records not in rrset_list are removed.
+        """
+        url = api_base_url + '/domains/' + domain + '/rrsets/'
+
+        if exclusive:
+            # Delete all records not in rrset_list by adding RRsets with empty an 'records'
+            # field for them.
+            existing_records = [(r['subname'], r['type']) for r in rrset_list]
+            for r in self.get_records(domain):
+                if (r['subname'], r['type']) not in existing_records:
+                    rrset_list.append({'subname': r['subname'], 'type': r['type'], 'records': []})
+
+        code, data = self.query('PATCH', url, rrset_list)
+
+        if code == 200:
+            return data
+        elif code == 400:
+            raise APIError(f'Could not create RRsets. Errors: {data}')
+        elif code == 404:
+            raise NotFoundError(f'Domain {domain} not found')
+        else:
+            raise APIError(f'Unexpected error code {code}')
+
     def change_record(self, domain, rtype, subname, rrset=None, ttl=None):
         """Change an existing RRset. Existing data is replaced by the provided `rrset` and `ttl`
         (if provided)
@@ -441,6 +471,18 @@ def print_records(rrset, **kwargs):
     for record in rrset['records']:
         line = (f'{rrset["name"]} {rrset["ttl"]} IN {rrset["type"]} {record}')
         print(line, **kwargs)
+
+
+def print_rrsets(rrsets, **kwargs):
+    """Print multiple RRsets
+
+    :rrsets: the RRsets to print
+    :**kwargs: additional keyword arguments to print()
+    :returns: nothing
+
+    """
+    for rrset in rrsets:
+        print_records(rrset, **kwargs)
 
 
 def sanitize_records(rtype, subname, rrset):
@@ -696,7 +738,15 @@ def main():
     p.add_argument('domain', help='domain name')
     p.add_argument('-f', '--file', required=True, help='target file name')
     p.add_argument('--clear', action='store_true',
-        help='remove all existing records before import')
+                   help='remove all existing records before import')
+
+    p = action.add_parser('import-zone', help='import records from a zone file')
+    p.add_argument('domain', help='domain name')
+    p.add_argument('-f', '--file', required=True, help='target file name')
+    p.add_argument('--clear', action='store_true',
+                   help='remove all existing records before import')
+    p.add_argument('-d', '--dry-run', action='store_true',
+                   help='just parse zone data, but do not write it to the API')
 
     arguments = parser.parse_args()
     del action, token, p, parser
@@ -837,6 +887,99 @@ def main():
                     # add a new one.
                     api_client.add_record(arguments.domain, r['type'], r['subname'],
                                           r['records'], r['ttl'])
+
+        elif arguments.action == 'import-zone':
+
+            with open(arguments.file, 'r') as f:
+                # Regex to parse a line of a zone file.
+                entry_regex = re.compile(
+                    r'''^(?P<name>.*?||@)\s+
+                    (IN\s+)?
+                    (?P<ttl>[0-9]*)\s+
+                    (IN\s+)?
+                    (?P<type>[A-Z0-9]+)\s+
+                    (?P<record>.*)$''',
+                    re.VERBOSE)
+                default_ttl_regex = re.compile(r'^\$TTL\s+(?P<ttl>[0-9]+)(\s+|$)')
+                default_ttl = None
+                minimum_ttl = api_client.domain_info(arguments.domain)['minimum_ttl']
+
+                # Parse the zone file into a (temporary) dict.
+                record_dict = {}
+                for line in f.readlines():
+                    # Skip comments and empty lines.
+                    if line.startswith(';') or line.strip() == '':
+                        continue
+                    if line.startswith('$ORIGIN ' + arguments.domain):
+                        # Accept $ORIGIN for the domain given on the command line. We'll treat
+                        # relative names to be relative to that domain anyway.
+                        continue
+                    elif line.startswith('$ORIGIN '):
+                        raise ParameterError('$ORIGIN is not supported.')
+                    if line.startswith('$INCLUDE '):
+                        raise ParameterError('$INCLUDE is not supported.')
+
+                    # Parse default TTL definition line.
+                    matches = default_ttl_regex.match(line)
+                    if matches is not None:
+                        default_ttl = int(matches.group("ttl"))
+                        continue
+
+                    # Parse a "normal" line.
+                    matches = entry_regex.match(line)
+                    if matches is None:
+                        raise ParameterError(f'Invalid line {line} in zone file.')
+
+                    # If name field is set, use it. Otherwise, inherit from the previous line.
+                    if matches.group("name"):
+                        subname = (matches.group("name").removesuffix(arguments.domain + ".")
+                                   .removesuffix("."))
+                    if subname == '@':
+                        subname = ''
+                    # If ttl field is set, use it. Otherwise, use the default TTL (if that is
+                    # defined) or inherit from the previous line.
+                    if matches.group("ttl"):
+                        ttl = int(matches.group("ttl"))
+                    elif default_ttl is not None:
+                        ttl = default_ttl
+                    rtype = matches.group("type")
+                    record = matches.group("record")
+
+                    if rtype not in record_types:
+                        print(f'Record type {rtype} not supported, skipping...', file=sys.stderr)
+                        continue
+
+                    if ttl < minimum_ttl:
+                        print(f'TTL smaller than minimum of {minimum_ttl} seconds, adjusting.',
+                              file=sys.stderr)
+                        ttl = minimum_ttl
+
+                    records = sanitize_records(rtype, subname, [record])
+
+                    # Place the record in a dict.
+                    # The key is used for merging entries of the same type.
+                    key = (subname, rtype, ttl)
+                    # If there is another entry with the same key, add the current record to the
+                    # list and save the entry.
+                    entry = record_dict.get(key, [])
+                    entry.extend(records)
+                    record_dict[key] = entry
+
+                # Convert the dict back to a list for interacting with the API.
+                record_list = []
+                for k, v in record_dict.items():
+                    subname, rtype, ttl = k
+                    record_list.append({'subname': subname, 'type': rtype, 'records': v,
+                                        'ttl': ttl})
+
+                if arguments.dry_run:
+                    print("Dry run. Not writing changes to API. I would have written this:",
+                          file=sys.stderr)
+                    pprint(record_list)
+                else:
+                    data = api_client.update_bulk_record(arguments.domain, record_list,
+                                                         arguments.clear)
+                    print_rrsets(data)
 
     except AuthenticationError as e:
         print('Invalid token.')

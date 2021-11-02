@@ -45,6 +45,7 @@ positional arguments:
                         port, protocol and subname
     export              export all records into a file
     import              import records from a file
+    import-zone         import records from a zone file
 
 optional arguments:
   -h, --help            show this help message and exit
