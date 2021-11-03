@@ -867,26 +867,9 @@ def main():
                 api_client.domain_info(arguments.domain)
             except NotFoundError:
                 api_client.new_domain(arguments.domain)
-            if arguments.clear:
-                # Delete all existing records:
-                for r in api_client.get_records(arguments.domain):
-                    api_client.delete_record(arguments.domain, r['type'], r['subname'])
-                existing_records = []
-            else:
-                existing_records = api_client.get_records(arguments.domain)
-            # Add the imported records.
-            for r in records:
-                if any([r['type'] == x['type'] and r['subname'] == x['subname']
-                        for x in existing_records]):
-                    # The record set already exists, change it to match the
-                    # imported data.
-                    api_client.change_record(arguments.domain, r['type'], r['subname'],
-                                             r['records'], r['ttl'])
-                else:
-                    # There is no record set with the given type and subname,
-                    # add a new one.
-                    api_client.add_record(arguments.domain, r['type'], r['subname'],
-                                          r['records'], r['ttl'])
+
+            data = api_client.update_bulk_record(arguments.domain, records, arguments.clear)
+            print_rrsets(data)
 
         elif arguments.action == 'import-zone':
 
