@@ -952,13 +952,13 @@ def main():
                 record_list = []
                 for k, v in record_dict.items():
                     subname, rtype, ttl = k
-                    record_list.append({'subname': subname, 'type': rtype, 'records': v,
-                                        'ttl': ttl})
+                    record_list.append({'name': f'{subname}.{arguments.domain}.', 'subname':
+                                        subname, 'type': rtype, 'records': v, 'ttl': ttl})
 
                 if arguments.dry_run:
                     print("Dry run. Not writing changes to API. I would have written this:",
                           file=sys.stderr)
-                    pprint(record_list)
+                    print_rrsets(record_list)
                 else:
                     data = api_client.update_bulk_record(arguments.domain, record_list,
                                                          arguments.clear)
