@@ -20,7 +20,7 @@ Most subcommand require further parameters to work.
 They are described by the usage information of each individual subcommand.
 
 ```
-usage: desec-dns.py [-h] [--token TOKEN | --token-file TOKEN_FILE] action ...
+usage: desec.py [-h] [--token TOKEN | --token-file TOKEN_FILE] action ...
 
 A simple deSEC.io API client
 
