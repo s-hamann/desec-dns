@@ -145,7 +145,7 @@ class APIClient(object):
         :method: HTTP method to use
         :url: target URL
         :data: data to send
-        :returns: (status code, response data)
+        :returns: (status code, response headers, response data)
 
         """
         if method == 'GET' or method == 'DELETE':
@@ -163,7 +163,24 @@ class APIClient(object):
             response_data = r.json()
         except ValueError:
             response_data = None
-        return (r.status_code, response_data)
+        return (r.status_code, r.headers, response_data)
+
+    def parse_links(self, links):
+        """Parse `Link:` response header used for pagination
+        See https://desec.readthedocs.io/en/latest/dns/rrsets.html#pagination
+
+        :links: `Link:` header returned by the API
+        :returns: dict containing urls from header
+
+        """
+        mapping = {}
+        for link in links.split(', '):
+            _url, label = link.split('; ')
+            label = re.search('rel="(.*)"', label).group(1)
+            _url = _url[1:-1]
+            assert label not in mapping
+            mapping[label] = _url
+        return mapping
 
     def list_tokens(self):
         """Return a list of all tokens
@@ -173,7 +190,7 @@ class APIClient(object):
 
         """
         url = f'{api_base_url}/auth/tokens/'
-        code, data = self.query('GET', url)
+        code, _, data = self.query('GET', url)
         if code == 200:
             return data
         elif code == 403:
@@ -194,7 +211,7 @@ class APIClient(object):
         request_data = {'name': name}
         if manage_tokens is not None:
             request_data['perm_manage_tokens'] = manage_tokens
-        code, data = self.query('POST', url, request_data)
+        code, _, data = self.query('POST', url, request_data)
         if code == 201:
             return data
         elif code == 403:
@@ -211,7 +228,7 @@ class APIClient(object):
 
         """
         url = f'{api_base_url}/auth/tokens/{token_id}/'
-        code, data = self.query('DELETE', url)
+        code, _, data = self.query('DELETE', url)
         if code == 204:
             pass
         elif code == 403:
@@ -227,7 +244,7 @@ class APIClient(object):
 
         """
         url = f'{api_base_url}/domains/'
-        code, data = self.query('GET', url)
+        code, _, data = self.query('GET', url)
         if code == 200:
             return [domain['name'] for domain in data]
         else:
@@ -242,7 +259,7 @@ class APIClient(object):
 
         """
         url = f'{api_base_url}/domains/{domain}/'
-        code, data = self.query('GET', url)
+        code, _, data = self.query('GET', url)
         if code == 200:
             return data
         elif code == 404:
@@ -259,7 +276,7 @@ class APIClient(object):
 
         """
         url = f'{api_base_url}/domains/'
-        code, data = self.query('POST', url, data={'name': domain})
+        code, _, data = self.query('POST', url, data={'name': domain})
         if code == 201:
             return data
         elif code == 400:
@@ -280,7 +297,7 @@ class APIClient(object):
 
         """
         url = f'{api_base_url}/domains/{domain}/'
-        code, data = self.query('DELETE', url)
+        code, _, data = self.query('DELETE', url)
         if code == 204:
             pass
         else:
@@ -298,10 +315,19 @@ class APIClient(object):
 
         """
         url = f'{api_base_url}/domains/{domain}/rrsets/'
-        code, data = self.query('GET', url,
-                                {'subname': subname, 'type': rtype})
+        code, headers, data = self.query('GET', url, {'subname': subname, 'type': rtype})
         if code == 200:
             return data
+        elif code == 400 and 'Link' in headers:
+            result = []
+            links = self.parse_links(headers['Link'])
+            url = links['first']
+            while url is not None:
+                code, headers, data = self.query('GET', url)
+                result += data
+                links = self.parse_links(headers['Link'])
+                url = links.get('next')
+            return result
         elif code == 404:
             raise NotFoundError(f'Domain {domain} not found')
         else:
@@ -320,8 +346,8 @@ class APIClient(object):
 
         """
         url = f'{api_base_url}/domains/{domain}/rrsets/'
-        code, data = self.query('POST', url,
-                                {'subname': subname, 'type': rtype, 'records': rrset, 'ttl': ttl})
+        code, _, data = self.query('POST', url,
+            {'subname': subname, 'type': rtype, 'records': rrset, 'ttl': ttl})
         if code == 201:
             return data
         elif code == 404:
@@ -353,7 +379,7 @@ class APIClient(object):
                 if (r['subname'], r['type']) not in existing_records:
                     rrset_list.append({'subname': r['subname'], 'type': r['type'], 'records': []})
 
-        code, data = self.query('PATCH', url, rrset_list)
+        code, _, data = self.query('PATCH', url, rrset_list)
 
         if code == 200:
             return data
@@ -383,7 +409,7 @@ class APIClient(object):
             request_data['records'] = rrset
         if ttl:
             request_data['ttl'] = ttl
-        code, data = self.query('PATCH', url, data=request_data)
+        code, _, data = self.query('PATCH', url, data=request_data)
         if code == 200:
             return data
         elif code == 404:
@@ -429,7 +455,7 @@ class APIClient(object):
         else:
             # Nothing should be kept, delete the whole RRset
             url = f'{api_base_url}/domains/{domain}/rrsets/{subname}.../{rtype}/'
-            code, data = self.query('DELETE', url)
+            code, _, data = self.query('DELETE', url)
             if code == 204:
                 pass
             elif code == 404:
