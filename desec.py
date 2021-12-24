@@ -610,7 +610,7 @@ def tlsa_record(file, usage=TLSAUsage('DANE-EE'), selector=TLSASelector('Cert'),
     elif match_type == 'SHA2-512':
         data = sha512(data).hexdigest()
 
-    return f'{int(usage)} {int(selector)} {int(match_type)} {int(data)}'
+    return f'{int(usage)} {int(selector)} {int(match_type)} {data}'
 
 
 def main():
