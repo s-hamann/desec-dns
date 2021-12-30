@@ -199,7 +199,7 @@ class APIClient(object):
             raise APIError(f'Unexpected error code {code}')
 
     def create_token(self, name='', manage_tokens=None):
-        """Create a new authenticaion token.
+        """Create a new authentication token.
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#create-additional-tokens
 
         :name: the name of the token
