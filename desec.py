@@ -863,19 +863,20 @@ def main():
                                  arguments.match_type, arguments.check, arguments.subname,
                                  arguments.domain)
 
+            records = []
             for port in arguments.ports:
                 subname = f'_{port}._{arguments.protocol}.{arguments.subname}'
                 if arguments.action == 'add-tlsa':
-                    data = api_client.update_record(arguments.domain, 'TLSA', subname, [record],
-                                                    arguments.ttl)
-                elif arguments.action == 'set-tlsa':
-                    if not api_client.get_records(arguments.domain, 'TLSA', subname):
-                        data = api_client.add_record(arguments.domain, 'TLSA', subname, [record],
-                                                     arguments.ttl)
-                    else:
-                        data = api_client.change_record(arguments.domain, 'TLSA', subname,
-                                                        [record], arguments.ttl)
-                print_records(data)
+                    existing_rrset = api_client.get_records(arguments.domain, 'TLSA', subname)
+                    if existing_rrset:
+                        existing_rrset = existing_rrset[0]['records']
+                else:
+                    existing_rrset = []
+                records.append({'type': 'TLSA', 'subname': subname,
+                                'records': existing_rrset + [record], 'ttl': arguments.ttl})
+
+            data = api_client.update_bulk_record(arguments.domain, records)
+            print_rrsets(data)
 
         elif arguments.action == 'export':
 
