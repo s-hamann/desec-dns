@@ -53,6 +53,10 @@ optional arguments:
   --token-file TOKEN_FILE
                         file containing the API authentication token (default:
                         $HOME/.desec_auth_token)
+  --non-blocking        When the API's rate limit is reached, return an
+                        appropriate error.
+  --blocking            When the API's rate limit is reached, wait and retry
+                        the request. This is the default behaviour.
 ```
 
 Related Work
