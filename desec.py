@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import datetime
 from hashlib import sha256, sha512
 from pprint import pprint
@@ -133,11 +134,13 @@ class APIClient(object):
 
     """deSEC.io API client"""
 
-    def __init__(self, token):
+    def __init__(self, token, retry_limit=3):
         """
         :token: API authorization token
+        :retry_limit: Number of retries when hitting the API's rate limit. Set to 0 to disable.
         """
         self._token_auth = TokenAuth(token)
+        self._retry_limit = retry_limit
 
     def query(self, method, url, data=None):
         """Query the API
@@ -154,11 +157,30 @@ class APIClient(object):
         else:
             params = None
             body = data
-        r = requests.request(method, url, auth=self._token_auth, params=params, json=body)
+
+        retry_after = 0
+        # Loop until we do not hit the rate limit (or we reach retry_limit + 1 iterations).
+        # Ideally, that should be only one or two iterations.
+        for _ in range(max(1, self._retry_limit + 1)):
+            # If we did hit the rate limit on the previous iteration, wait until it expires.
+            time.sleep(retry_after)
+            # Send the request.
+            r = requests.request(method, url, auth=self._token_auth, params=params, json=body)
+            if r.status_code != 429:
+                # Not rate limited. Response is handled below.
+                break
+            # Handle rate limiting. See https://desec.readthedocs.io/en/latest/rate-limits.html
+            try:
+                retry_after = int(r.headers['Retry-After'])
+            except (KeyError, ValueError) as e:
+                # Retry-After header is missing or not an integer. This should never happen.
+                raise RateLimitError(r.json()['detail'] + '\n' + e.message)
+        else:
+            # Reached retry_limit (or it is 0) without any other response than 429.
+            raise RateLimitError(r.json()['detail'])
+
         if r.status_code == 401:
             raise AuthenticationError()
-        elif r.status_code == 429:
-            raise RateLimitError(r.json()['detail'])
         try:
             response_data = r.json()
         except ValueError:
@@ -625,6 +647,12 @@ def main():
         default=os.path.join(os.path.expanduser('~'), '.desec_auth_token'),
         help='file containing the API authentication token (default: %(default)s)')
 
+    parser.add_argument('--non-blocking', dest='block', action='store_false', default=True,
+                        help="When the API's rate limit is reached, return an appropriate error.")
+    parser.add_argument('--blocking', dest='block', action='store_true', default=True,
+                        help="When the API's rate limit is reached, wait an retry the request. "
+                        "This is the default behaviour.")
+
     p = action.add_parser('list-tokens', help='list all authentication tokens')
 
     p = action.add_parser('create-token', help='create and return a new authentication token')
@@ -778,10 +806,15 @@ def main():
     del action, token, p, parser
 
     if arguments.token:
-        api_client = APIClient(arguments.token)
+        token = arguments.token
     else:
         with open(arguments.token_file, 'r') as f:
-            api_client = APIClient(f.readline().strip())
+            token = f.readline().strip()
+    if arguments.block:
+        api_client = APIClient(token)
+    else:
+        api_client = APIClient(token, retry_limit=0)
+    del token
 
     try:
 
