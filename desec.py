@@ -650,7 +650,7 @@ def main():
     parser.add_argument('--non-blocking', dest='block', action='store_false', default=True,
                         help="When the API's rate limit is reached, return an appropriate error.")
     parser.add_argument('--blocking', dest='block', action='store_true', default=True,
-                        help="When the API's rate limit is reached, wait an retry the request. "
+                        help="When the API's rate limit is reached, wait and retry the request. "
                         "This is the default behaviour.")
 
     p = action.add_parser('list-tokens', help='list all authentication tokens')
