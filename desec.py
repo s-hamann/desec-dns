@@ -375,11 +375,9 @@ class APIClient(object):
         elif code == 404:
             raise NotFoundError(f'Domain {domain} not found')
         elif code == 422:
-            raise ParameterError('Invalid RRset {rrset} for {rtype} record {subname}.{domain}'.
-                format(rrset=rrset, rtype=rtype, subname=subname, domain=domain))
+            raise ParameterError(f'Invalid RRset {rrset} for {rtype} record {subname}.{domain}')
         elif code == 400:
-            raise APIError('Could not create RRset {rrset} for {rtype} record {subname}.{domain}'.
-                           format(rrset=rrset, rtype=rtype, subname=subname, domain=domain))
+            raise APIError(f'Could not create RRset {rrset} for {rtype} record {subname}.{domain}')
         else:
             raise APIError(f'Unexpected error code {code}')
 
@@ -435,15 +433,12 @@ class APIClient(object):
         if code == 200:
             return data
         elif code == 404:
-            raise NotFoundError('RRset {rrset} for {rtype} record {subname}.{domain} not found'.
-                                format(rrset=rrset, rtype=rtype, subname=subname, domain=domain))
+            raise NotFoundError(f'RRset {rrset} for {rtype} record {subname}.{domain} not found')
         elif code == 400:
             raise ParameterError(
-                'Missing data for changing RRset {rrset} for {rtype} record {subname}.{domain}'.
-                format(rrset=rrset, rtype=rtype, subname=subname, domain=domain))
+                f'Missing data for changing RRset {rrset} for {rtype} record {subname}.{domain}')
         elif code == 422:
-            raise ParameterError('Invalid RRset {rrset} for {rtype} record {subname}.{domain}'.
-                format(rrset=rrset, rtype=rtype, subname=subname, domain=domain))
+            raise ParameterError(f'Invalid RRset {rrset} for {rtype} record {subname}.{domain}')
         else:
             raise APIError(f'Unexpected error code {code}')
 
