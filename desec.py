@@ -282,6 +282,23 @@ class APIClient(object):
         else:
             raise APIError(f'Unexpected error code {code}')
 
+    def list_token_domain_policies(self, token_id):
+        """Return a list of all domain policies for the given token
+        See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-domain-policy-management
+
+        :token_id: the unique id of the token
+        :returns: list of domain policies
+
+        """
+        url = f'{api_base_url}/auth/tokens/{token_id}/policies/domain/'
+        code, _, data = self.query('GET', url)
+        if code == 200:
+            return data
+        elif code == 403:
+            raise APIError('Insufficient permissions to manage tokens')
+        else:
+            raise APIError(f'Unexpected error code {code}')
+
     def list_domains(self):
         """Return a list of all registered domains
         See https://desec.readthedocs.io/en/latest/dns/domains.html#listing-domains
@@ -821,6 +838,10 @@ def main():
     p = action.add_parser('delete-token', help='delete an authentication token')
     p.add_argument('id', help='token id')
 
+    p = action.add_parser('list-token-domain-policies',
+                          help='list all domain policies of an authentication token')
+    p.add_argument('id', help='token id')
+
     p = action.add_parser('list-domains', help='list all registered domains')
 
     p = action.add_parser('domain-info', help='get information about a domain')
@@ -994,6 +1015,11 @@ def main():
         elif arguments.action == 'delete-token':
 
             data = api_client.delete_token(arguments.id)
+
+        elif arguments.action == 'list-token-domain-policies':
+
+            policies = api_client.list_token_domain_policies(arguments.id)
+            pprint(policies)
 
         elif arguments.action == 'list-domains':
 
