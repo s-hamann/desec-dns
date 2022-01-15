@@ -320,6 +320,32 @@ class APIClient(object):
         else:
             raise APIError(f'Unexpected error code {code}')
 
+    def modify_token_domain_policy(self, token_id, domain=None, perm_dyndns=None,
+                                   perm_rrsets=None):
+        """Modify an existing domain policy for the given token
+        See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-domain-policy-management
+
+        :token_id: the unique id of the token
+        :domain: the domain to which the policy applies. None indicates the default policy.
+        :perm_dyndns: boolean indicating whether to allow dynDNS updates
+        :perm_rrsets: boolean indicating whether to allow general RRset management
+        :returns: the new domain policy
+
+        """
+        url = f'{api_base_url}/auth/tokens/{token_id}/policies/domain/{domain or "default"}/'
+        request_data = {}
+        if perm_dyndns is not None:
+            request_data['perm_dyndns'] = perm_dyndns
+        if perm_rrsets is not None:
+            request_data['perm_rrsets'] = perm_rrsets
+        code, _, data = self.query('PATCH', url, request_data)
+        if code == 200:
+            return data
+        elif code == 403:
+            raise APIError('Insufficient permissions to manage tokens')
+        else:
+            raise APIError(f'Unexpected error code {code}')
+
     def list_domains(self):
         """Return a list of all registered domains
         See https://desec.readthedocs.io/en/latest/dns/domains.html#listing-domains
@@ -872,6 +898,22 @@ def main():
     p.add_argument('--rrsets', action='store_true', default=False,
                    help='allow general RRset management')
 
+    p = action.add_parser('modify-token-domain-policy',
+                          help='modify an existing domain policy for an authentication token')
+    p.add_argument('id', help='token id')
+    p.add_argument('--domain', default=None,
+                   help='domain to which the policy applies, omit to modify the default policy')
+    perm_dyndns = p.add_mutually_exclusive_group()
+    perm_dyndns.add_argument('--dyndns', dest='dyndns', action='store_true', default=None,
+                             help='allow dynDNS updates')
+    perm_dyndns.add_argument('--no-dyndns', dest='dyndns', action='store_false', default=None,
+                             help='do not allow dynDNS updates')
+    perm_rrsets = p.add_mutually_exclusive_group()
+    perm_rrsets.add_argument('--rrsets', dest='rrsets', action='store_true', default=None,
+                             help='allow general RRset management')
+    perm_rrsets.add_argument('--no-rrsets', dest='rrsets', action='store_false', default=None,
+                             help='do not allow general RRset management')
+
     p = action.add_parser('list-domains', help='list all registered domains')
 
     p = action.add_parser('domain-info', help='get information about a domain')
@@ -1012,7 +1054,7 @@ def main():
                    help='just parse zone data, but do not write it to the API')
 
     arguments = parser.parse_args()
-    del action, token, perm_manage_tokens, p, parser
+    del action, token, perm_manage_tokens, perm_dyndns, perm_rrsets, p, parser
 
     if arguments.token:
         token = arguments.token
@@ -1055,6 +1097,12 @@ def main():
 
             policy = api_client.add_token_domain_policy(arguments.id, arguments.domain,
                                                         arguments.dyndns, arguments.rrsets)
+            pprint(policy)
+
+        elif arguments.action == 'modify-token-domain-policy':
+
+            policy = api_client.modify_token_domain_policy(arguments.id, arguments.domain,
+                                                           arguments.dyndns, arguments.rrsets)
             pprint(policy)
 
         elif arguments.action == 'list-domains':

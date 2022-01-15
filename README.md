@@ -34,6 +34,8 @@ positional arguments:
                         list all domain policies of an authentication token
     add-token-domain-policy
                         add a domain policy for an authentication token
+    modify-token-domain-policy
+                        modify an existing domain policy for an authentication token
     list-domains        list all registered domains
     domain-info         get information about a domain
     new-domain          create a new domain
