@@ -785,7 +785,7 @@ def main():
                    help='create a token that can manage tokens')
 
     p = action.add_parser('delete-token', help='delete an authentication token')
-    p.add_argument('id', help='token d')
+    p.add_argument('id', help='token id')
 
     p = action.add_parser('list-domains', help='list all registered domains')
 
