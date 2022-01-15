@@ -299,6 +299,27 @@ class APIClient(object):
         else:
             raise APIError(f'Unexpected error code {code}')
 
+    def add_token_domain_policy(self, token_id, domain=None, perm_dyndns=False, perm_rrsets=False):
+        """Add a domain policy to the given token
+        See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-domain-policy-management
+
+        :token_id: the unique id of the token
+        :domain: the domain to which the policy applies. None indicates the default policy.
+        :perm_dyndns: boolean indicating whether to allow dynDNS updates
+        :perm_rrsets: boolean indicating whether to allow general RRset management
+        :returns: the new domain policy
+
+        """
+        url = f'{api_base_url}/auth/tokens/{token_id}/policies/domain/'
+        request_data = {'domain': domain, 'perm_dyndns': perm_dyndns, 'perm_rrsets': perm_rrsets}
+        code, _, data = self.query('POST', url, request_data)
+        if code == 201:
+            return data
+        elif code == 403:
+            raise APIError('Insufficient permissions to manage tokens')
+        else:
+            raise APIError(f'Unexpected error code {code}')
+
     def list_domains(self):
         """Return a list of all registered domains
         See https://desec.readthedocs.io/en/latest/dns/domains.html#listing-domains
@@ -842,6 +863,15 @@ def main():
                           help='list all domain policies of an authentication token')
     p.add_argument('id', help='token id')
 
+    p = action.add_parser('add-token-domain-policy',
+                          help='add a domain policy for an authentication token')
+    p.add_argument('id', help='token id')
+    p.add_argument('--domain', default=None,
+                   help='domain to which the policy applies, omit to add a default policy')
+    p.add_argument('--dyndns', action='store_true', default=False, help='allow dynDNS updates')
+    p.add_argument('--rrsets', action='store_true', default=False,
+                   help='allow general RRset management')
+
     p = action.add_parser('list-domains', help='list all registered domains')
 
     p = action.add_parser('domain-info', help='get information about a domain')
@@ -1020,6 +1050,12 @@ def main():
 
             policies = api_client.list_token_domain_policies(arguments.id)
             pprint(policies)
+
+        elif arguments.action == 'add-token-domain-policy':
+
+            policy = api_client.add_token_domain_policy(arguments.id, arguments.domain,
+                                                        arguments.dyndns, arguments.rrsets)
+            pprint(policy)
 
         elif arguments.action == 'list-domains':
 
