@@ -346,6 +346,24 @@ class APIClient(object):
         else:
             raise APIError(f'Unexpected error code {code}')
 
+    def delete_token_domain_policy(self, token_id, domain=None):
+        """Delete an existing domain policy for the given token
+        See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-domain-policy-management
+
+        :token_id: the unique id of the token
+        :domain: the domain to which the policy applies. None indicates the default policy.
+        :returns: nothing
+
+        """
+        url = f'{api_base_url}/auth/tokens/{token_id}/policies/domain/{domain or "default"}/'
+        code, _, data = self.query('DELETE', url)
+        if code == 204:
+            pass
+        elif code == 403:
+            raise APIError('Insufficient permissions to manage tokens')
+        else:
+            raise APIError(f'Unexpected error code {code}')
+
     def list_domains(self):
         """Return a list of all registered domains
         See https://desec.readthedocs.io/en/latest/dns/domains.html#listing-domains
@@ -914,6 +932,12 @@ def main():
     perm_rrsets.add_argument('--no-rrsets', dest='rrsets', action='store_false', default=None,
                              help='do not allow general RRset management')
 
+    p = action.add_parser('delete-token-domain-policy',
+                          help='delete an existing domain policy for an authentication token')
+    p.add_argument('id', help='token id')
+    p.add_argument('--domain', default=None,
+                   help='domain to which the policy applies, omit to delete the default policy')
+
     p = action.add_parser('list-domains', help='list all registered domains')
 
     p = action.add_parser('domain-info', help='get information about a domain')
@@ -1104,6 +1128,10 @@ def main():
             policy = api_client.modify_token_domain_policy(arguments.id, arguments.domain,
                                                            arguments.dyndns, arguments.rrsets)
             pprint(policy)
+
+        elif arguments.action == 'delete-token-domain-policy':
+
+            api_client.delete_token_domain_policy(arguments.id, arguments.domain)
 
         elif arguments.action == 'list-domains':
 
