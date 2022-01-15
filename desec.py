@@ -241,6 +241,30 @@ class APIClient(object):
         else:
             raise APIError(f'Unexpected error code {code}')
 
+    def modify_token(self, token_id, name=None, manage_tokens=None):
+        """Modify an existing authentication token.
+        See https://desec.readthedocs.io/en/latest/auth/tokens.html#modifying-a-token
+
+        :token_id: the unique id of the token to modify
+        :name: the name of the token
+        :manage_tokens: boolean indicating whether the token can manage tokens
+        :returns: changed token information
+
+        """
+        url = f'{api_base_url}/auth/tokens/{token_id}/'
+        request_data = {}
+        if name is not None:
+            request_data['name'] = name
+        if manage_tokens is not None:
+            request_data['perm_manage_tokens'] = manage_tokens
+        code, _, data = self.query('PATCH', url, request_data)
+        if code == 200:
+            return data
+        elif code == 403:
+            raise APIError('Insufficient permissions to manage tokens')
+        else:
+            raise APIError(f'Unexpected error code {code}')
+
     def delete_token(self, token_id):
         """Delete an authentication token
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#delete-tokens
@@ -784,6 +808,16 @@ def main():
     p.add_argument('--manage-tokens', action='store_true', default=False,
                    help='create a token that can manage tokens')
 
+    p = action.add_parser('modify-token', help='modify an existing authentication token')
+    p.add_argument('id', help='token id')
+    p.add_argument('--name', default=None, help='token name')
+    perm_manage_tokens = p.add_mutually_exclusive_group()
+    perm_manage_tokens.add_argument('--manage-tokens', dest='manage_tokens', action='store_true',
+                                    default=None, help='allow this token to manage tokens')
+    perm_manage_tokens.add_argument('--no-manage-tokens', dest='manage_tokens',
+                                    action='store_false', default=None,
+                                    help='do not allow this token to manage tokens')
+
     p = action.add_parser('delete-token', help='delete an authentication token')
     p.add_argument('id', help='token id')
 
@@ -927,7 +961,7 @@ def main():
                    help='just parse zone data, but do not write it to the API')
 
     arguments = parser.parse_args()
-    del action, token, p, parser
+    del action, token, perm_manage_tokens, p, parser
 
     if arguments.token:
         token = arguments.token
@@ -951,6 +985,11 @@ def main():
 
             data = api_client.create_token(arguments.name, arguments.manage_tokens)
             print(data['token'])
+
+        elif arguments.action == 'modify-token':
+
+            data = api_client.modify_token(arguments.id, arguments.name, arguments.manage_tokens)
+            pprint(data)
 
         elif arguments.action == 'delete-token':
 
