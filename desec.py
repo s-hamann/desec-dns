@@ -557,6 +557,135 @@ def sanitize_records(rtype, subname, rrset):
     return rrset
 
 
+def parse_zone_file(path, domain, minimum_ttl=3600):
+    """Parse a zone file into a list of rrsets that can be supplied to the API, e.g. using
+    update_bulk_record(). The list of rrsets may contain invalid records. It should be passed to
+    clear_errors_from_record_list() before passing it to the API.
+
+    :path: path to the zone file to parse
+    :domain: domain of all records in the zone file
+    :minimum_ttl: minimum TTL value for records in the target domain
+    :returns: a list of dictionaries describing the DNS records in the zone file with additional
+        error information for records with errors
+
+    """
+
+    # Regex to parse a line of a zone file.
+    entry_regex = re.compile(
+        r'''^(?P<name>.*?||@)\s+
+        (IN\s+)?
+        (?P<ttl>[0-9]*)\s+
+        (IN\s+)?
+        (?P<type>[A-Z0-9]+)\s+
+        (?P<record>.*)$''',
+        re.VERBOSE)
+    default_ttl_regex = re.compile(r'^\$TTL\s+(?P<ttl>[0-9]+)(\s+|$)')
+    default_ttl = None
+
+    with open(path, 'r') as f:
+
+        # Parse the zone file into a (temporary) dict.
+        record_dict = {}
+        # Note any parsing errors in a matching dict.
+        error_dict = {}
+        for line in f.readlines():
+            # Store error information of the current line as a tuple of a human-readable
+            # error message and a boolean indicating, whether the error was fixed.
+            # Only one error is stored, even if the line has multiple errors.
+            error = None
+            # Skip comments and empty lines.
+            if line.startswith(';') or line.strip() == '':
+                continue
+            if line.startswith('$ORIGIN ' + domain):
+                # Accept $ORIGIN for the target domain. We'll treat relative names to be
+                # relative to that domain anyway.
+                continue
+            elif line.startswith('$ORIGIN '):
+                raise ParameterError('$ORIGIN is not supported.')
+            if line.startswith('$INCLUDE '):
+                raise ParameterError('$INCLUDE is not supported.')
+
+            # Parse default TTL definition line.
+            matches = default_ttl_regex.match(line)
+            if matches is not None:
+                default_ttl = int(matches.group("ttl"))
+                continue
+
+            # Parse a "normal" line.
+            matches = entry_regex.match(line)
+            if matches is None:
+                raise ParameterError(f'Invalid line {line} in zone file.')
+
+            # If name field is set, use it. Otherwise, inherit from the previous line.
+            if matches.group("name"):
+                subname = (matches.group("name").removesuffix(domain + ".").removesuffix("."))
+            if subname == '@':
+                subname = ''
+            # If ttl field is set, use it. Otherwise, use the default TTL (if that is
+            # defined) or inherit from the previous line.
+            if matches.group("ttl"):
+                ttl = int(matches.group("ttl"))
+            elif default_ttl is not None:
+                ttl = default_ttl
+            rtype = matches.group("type")
+            record = matches.group("record")
+
+            if ttl < minimum_ttl:
+                error = (f'TTL {ttl} smaller than minimum of {minimum_ttl} seconds.', True)
+                ttl = minimum_ttl
+
+            if rtype not in record_types:
+                error = (f'Record type {rtype} is not supported.', False)
+
+            try:
+                records = sanitize_records(rtype, subname, [record])
+            except ParameterError as e:
+                error = (str(e), False)
+
+            # Place the record in a dict.
+            # The key is used for merging entries of the same type.
+            key = (subname, rtype, ttl)
+            # If there is another entry with the same key, add the current record to the
+            # list and save the entry.
+            entry = record_dict.get(key, [])
+            entry.extend(records)
+            record_dict[key] = entry
+            # Store the error information.
+            error_dict[key] = error
+
+        # Convert the dict back to a list for interacting with the API.
+        record_list = []
+        for k, v in record_dict.items():
+            subname, rtype, ttl = k
+            entry = {'name': f'{subname}.{domain}.', 'subname': subname, 'type': rtype,
+                     'records': v, 'ttl': ttl}
+            error = error_dict[k]
+            if error is not None:
+                entry.update({'error_msg': error[0], 'error_recovered': error[1]})
+            record_list.append(entry)
+
+        return record_list
+
+
+def clear_errors_from_record_list(record_list):
+    """Remove error information added by parse_zone_file() and all items with
+    non-recoverable errors.
+
+    :record_list: a list of dictionaries describing DNS records with additional error
+        information for records with errors
+    :returns: a list of dictionaries describing DNS records without error information or
+        records that were marked as erroneous
+
+    """
+    # Remove all items with non-recoverable errors.
+    record_list = [r for r in record_list if r.get('error_recovered', True)]
+    # Remove error information from the remaining items.
+    for r in record_list:
+        r.pop('error_msg', None)
+        r.pop('error_recovered', None)
+    return record_list
+
+
 def tlsa_record(file, usage=TLSAUsage('DANE-EE'), selector=TLSASelector('Cert'),
                 match_type=TLSAMatchType('SHA2-256'), check=True, subname=None, domain=None):
     """Return the TLSA record for the given certificate, usage, selector and match_type.
@@ -928,96 +1057,22 @@ def main():
 
         elif arguments.action == 'import-zone':
 
-            with open(arguments.file, 'r') as f:
-                # Regex to parse a line of a zone file.
-                entry_regex = re.compile(
-                    r'''^(?P<name>.*?||@)\s+
-                    (IN\s+)?
-                    (?P<ttl>[0-9]*)\s+
-                    (IN\s+)?
-                    (?P<type>[A-Z0-9]+)\s+
-                    (?P<record>.*)$''',
-                    re.VERBOSE)
-                default_ttl_regex = re.compile(r'^\$TTL\s+(?P<ttl>[0-9]+)(\s+|$)')
-                default_ttl = None
-                minimum_ttl = api_client.domain_info(arguments.domain)['minimum_ttl']
+            record_list = parse_zone_file(arguments.file, arguments.domain,
+                                          api_client.domain_info(arguments.domain)['minimum_ttl'])
+            for entry in record_list:
+                if 'error_msg' in entry:
+                    action = 'Corrected' if entry['error_recovered'] else 'Skipped'
+                    print(f"{entry['error_msg']} {action}.", file=sys.stderr)
+            record_list = clear_errors_from_record_list(record_list)
 
-                # Parse the zone file into a (temporary) dict.
-                record_dict = {}
-                for line in f.readlines():
-                    # Skip comments and empty lines.
-                    if line.startswith(';') or line.strip() == '':
-                        continue
-                    if line.startswith('$ORIGIN ' + arguments.domain):
-                        # Accept $ORIGIN for the domain given on the command line. We'll treat
-                        # relative names to be relative to that domain anyway.
-                        continue
-                    elif line.startswith('$ORIGIN '):
-                        raise ParameterError('$ORIGIN is not supported.')
-                    if line.startswith('$INCLUDE '):
-                        raise ParameterError('$INCLUDE is not supported.')
-
-                    # Parse default TTL definition line.
-                    matches = default_ttl_regex.match(line)
-                    if matches is not None:
-                        default_ttl = int(matches.group("ttl"))
-                        continue
-
-                    # Parse a "normal" line.
-                    matches = entry_regex.match(line)
-                    if matches is None:
-                        raise ParameterError(f'Invalid line {line} in zone file.')
-
-                    # If name field is set, use it. Otherwise, inherit from the previous line.
-                    if matches.group("name"):
-                        subname = (matches.group("name").removesuffix(arguments.domain + ".")
-                                   .removesuffix("."))
-                    if subname == '@':
-                        subname = ''
-                    # If ttl field is set, use it. Otherwise, use the default TTL (if that is
-                    # defined) or inherit from the previous line.
-                    if matches.group("ttl"):
-                        ttl = int(matches.group("ttl"))
-                    elif default_ttl is not None:
-                        ttl = default_ttl
-                    rtype = matches.group("type")
-                    record = matches.group("record")
-
-                    if rtype not in record_types:
-                        print(f'Record type {rtype} not supported, skipping...', file=sys.stderr)
-                        continue
-
-                    if ttl < minimum_ttl:
-                        print(f'TTL smaller than minimum of {minimum_ttl} seconds, adjusting.',
-                              file=sys.stderr)
-                        ttl = minimum_ttl
-
-                    records = sanitize_records(rtype, subname, [record])
-
-                    # Place the record in a dict.
-                    # The key is used for merging entries of the same type.
-                    key = (subname, rtype, ttl)
-                    # If there is another entry with the same key, add the current record to the
-                    # list and save the entry.
-                    entry = record_dict.get(key, [])
-                    entry.extend(records)
-                    record_dict[key] = entry
-
-                # Convert the dict back to a list for interacting with the API.
-                record_list = []
-                for k, v in record_dict.items():
-                    subname, rtype, ttl = k
-                    record_list.append({'name': f'{subname}.{arguments.domain}.', 'subname':
-                                        subname, 'type': rtype, 'records': v, 'ttl': ttl})
-
-                if arguments.dry_run:
-                    print("Dry run. Not writing changes to API. I would have written this:",
-                          file=sys.stderr)
-                    print_rrsets(record_list)
-                else:
-                    data = api_client.update_bulk_record(arguments.domain, record_list,
-                                                         arguments.clear)
-                    print_rrsets(data)
+            if arguments.dry_run:
+                print("Dry run. Not writing changes to API. I would have written this:",
+                      file=sys.stderr)
+                print_rrsets(record_list)
+            else:
+                data = api_client.update_bulk_record(arguments.domain, record_list,
+                                                     arguments.clear)
+                print_rrsets(data)
 
     except AuthenticationError as e:
         print('Invalid token.')
