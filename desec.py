@@ -23,6 +23,13 @@ try:
 except ModuleNotFoundError:
     cryptography_available = False
 
+try:
+    from dns import rdatatype, zone
+    dnspython_available = True
+except ModuleNotFoundError:
+    dnspython_available = False
+
+
 api_base_url = 'https://desec.io/api/v1'
 record_types = ('A', 'AAAA', 'AFSDB', 'APL', 'CAA', 'CDNSKEY', 'CDS', 'CERT', 'CNAME', 'DHCID',
                 'DNAME', 'DNSKEY', 'DLV', 'DS', 'EUI48', 'EUI64', 'HINFO', 'HTTPS', 'KX', 'LOC',
@@ -676,101 +683,45 @@ def parse_zone_file(path, domain, minimum_ttl=3600):
 
     """
 
-    # Regex to parse a line of a zone file.
-    entry_regex = re.compile(
-        r'''^(?P<name>.*?||@)\s+
-        (IN\s+)?
-        (?P<ttl>[0-9]*)\s+
-        (IN\s+)?
-        (?P<type>[A-Z0-9]+)\s+
-        (?P<record>.*)$''',
-        re.VERBOSE)
-    default_ttl_regex = re.compile(r'^\$TTL\s+(?P<ttl>[0-9]+)(\s+|$)')
-    default_ttl = None
+    # Let dnspython parse the zone file.
+    parsed_zone = zone.from_file(path, origin=domain, relativize=True, check_origin=False)
 
-    with open(path, 'r') as f:
+    # Convert the parsed data into a dictionary and do some error detection.
+    record_list = []
+    for subname, rrset in parsed_zone.iterate_rdatasets():
 
-        # Parse the zone file into a (temporary) dict.
-        record_dict = {}
-        # Note any parsing errors in a matching dict.
-        error_dict = {}
-        for line in f.readlines():
-            # Store error information of the current line as a tuple of a human-readable
-            # error message and a boolean indicating, whether the error was fixed.
-            # Only one error is stored, even if the line has multiple errors.
-            error = None
-            # Skip comments and empty lines.
-            if line.startswith(';') or line.strip() == '':
-                continue
-            if line.startswith('$ORIGIN ' + domain):
-                # Accept $ORIGIN for the target domain. We'll treat relative names to be
-                # relative to that domain anyway.
-                continue
-            elif line.startswith('$ORIGIN '):
-                raise ParameterError('$ORIGIN is not supported.')
-            if line.startswith('$INCLUDE '):
-                raise ParameterError('$INCLUDE is not supported.')
+        # Store error information of the current rrset as a dict of a human-readable
+        # error message and a boolean indicating whether the error was fixed.
+        # Only one error is stored, even if the line has multiple errors.
+        error = None
 
-            # Parse default TTL definition line.
-            matches = default_ttl_regex.match(line)
-            if matches is not None:
-                default_ttl = int(matches.group("ttl"))
-                continue
+        if rrset.ttl < minimum_ttl:
+            error = {
+                'error_msg': f'TTL {rrset.ttl} smaller than minimum of {minimum_ttl} seconds.',
+                'error_recovered': True
+            }
+            rrset.ttl = minimum_ttl
 
-            # Parse a "normal" line.
-            matches = entry_regex.match(line)
-            if matches is None:
-                raise ParameterError(f'Invalid line {line} in zone file.')
+        if rdatatype.to_text(rrset.rdtype) not in record_types:
+            error = {
+                'error_msg': f'Record type {rdatatype.to_text(rrset.rdtype)} is not supported.',
+                'error_recovered': False
+            }
 
-            # If name field is set, use it. Otherwise, inherit from the previous line.
-            if matches.group("name"):
-                subname = (matches.group("name").removesuffix(domain + ".").removesuffix("."))
-            if subname == '@':
-                subname = ''
-            # If ttl field is set, use it. Otherwise, use the default TTL (if that is
-            # defined) or inherit from the previous line.
-            if matches.group("ttl"):
-                ttl = int(matches.group("ttl"))
-            elif default_ttl is not None:
-                ttl = default_ttl
-            rtype = matches.group("type")
-            record = matches.group("record")
+        records = [r.to_text() for r in rrset]
+        try:
+            records = sanitize_records(rrset.rdtype, subname, records)
+        except ParameterError as e:
+            error = {'error_msg': str(e), 'error_recovered': False}
 
-            if ttl < minimum_ttl:
-                error = (f'TTL {ttl} smaller than minimum of {minimum_ttl} seconds.', True)
-                ttl = minimum_ttl
+        entry = {'name': f'{subname}.{domain}.', 'subname': subname,
+                 'type': rdatatype.to_text(rrset.rdtype), 'records': records,
+                 'ttl': rrset.ttl}
+        if error is not None:
+            entry.update(error)
+        record_list.append(entry)
 
-            if rtype not in record_types:
-                error = (f'Record type {rtype} is not supported.', False)
-
-            try:
-                records = sanitize_records(rtype, subname, [record])
-            except ParameterError as e:
-                error = (str(e), False)
-
-            # Place the record in a dict.
-            # The key is used for merging entries of the same type.
-            key = (subname, rtype, ttl)
-            # If there is another entry with the same key, add the current record to the
-            # list and save the entry.
-            entry = record_dict.get(key, [])
-            entry.extend(records)
-            record_dict[key] = entry
-            # Store the error information.
-            error_dict[key] = error
-
-        # Convert the dict back to a list for interacting with the API.
-        record_list = []
-        for k, v in record_dict.items():
-            subname, rtype, ttl = k
-            entry = {'name': f'{subname}.{domain}.', 'subname': subname, 'type': rtype,
-                     'records': v, 'ttl': ttl}
-            error = error_dict[k]
-            if error is not None:
-                entry.update({'error_msg': error[0], 'error_recovered': error[1]})
-            record_list.append(entry)
-
-        return record_list
+    return record_list
 
 
 def clear_errors_from_record_list(record_list):
@@ -1069,13 +1020,14 @@ def main():
     p.add_argument('--clear', action='store_true',
                    help='remove all existing records before import')
 
-    p = action.add_parser('import-zone', help='import records from a zone file')
-    p.add_argument('domain', help='domain name')
-    p.add_argument('-f', '--file', required=True, help='target file name')
-    p.add_argument('--clear', action='store_true',
-                   help='remove all existing records before import')
-    p.add_argument('-d', '--dry-run', action='store_true',
-                   help='just parse zone data, but do not write it to the API')
+    if dnspython_available:
+        p = action.add_parser('import-zone', help='import records from a zone file')
+        p.add_argument('domain', help='domain name')
+        p.add_argument('-f', '--file', required=True, help='target file name')
+        p.add_argument('--clear', action='store_true',
+                    help='remove all existing records before import')
+        p.add_argument('-d', '--dry-run', action='store_true',
+                    help='just parse zone data, but do not write it to the API')
 
     arguments = parser.parse_args()
     del action, token, perm_manage_tokens, perm_dyndns, perm_rrsets, p, parser

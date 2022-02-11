@@ -11,6 +11,7 @@ Requirements
 * Python 3.9+
 * [requests](https://github.com/requests/requests)
 * [cryptography](https://github.com/pyca/cryptography/) (optional, for high-level management of TLSA records)
+* [dnspython](https://www.dnspython.org/) (optional, for parsing zone files)
 
 Usage
 =====

@@ -1,2 +1,3 @@
 cryptography>=1.8
+dnspython>=2.0.0
 requests>=2.0.0
