@@ -695,6 +695,11 @@ def parse_zone_file(path, domain, minimum_ttl=3600):
         # Only one error is stored, even if the line has multiple errors.
         error = None
 
+        # @ may be used for the zone apex in zone files. But we (and the deSEC API) use
+        # the empty string instead.
+        if subname.to_text() == '@':
+            subname = ''
+
         if rrset.ttl < minimum_ttl:
             error = {
                 'error_msg': f'TTL {rrset.ttl} smaller than minimum of {minimum_ttl} seconds.',
