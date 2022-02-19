@@ -714,9 +714,15 @@ def parse_zone_file(path, domain, minimum_ttl=3600):
         except ParameterError as e:
             error = {'error_msg': str(e), 'error_recovered': False}
 
-        entry = {'name': f'{subname}.{domain}.', 'subname': subname,
-                 'type': rdatatype.to_text(rrset.rdtype), 'records': records,
-                 'ttl': rrset.ttl}
+        if subname.to_text() == '@':
+            entry = {'name': f'{subname}.{domain}.', 'subname': '',
+                    'type': rdatatype.to_text(rrset.rdtype), 'records': records,
+                    'ttl': rrset.ttl}
+        else:
+            entry = {'name': f'{subname}.{domain}.', 'subname': f'{subname}',
+                    'type': rdatatype.to_text(rrset.rdtype), 'records': records,
+                    'ttl': rrset.ttl}
+
         if error is not None:
             entry.update(error)
         record_list.append(entry)
