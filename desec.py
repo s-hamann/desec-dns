@@ -24,6 +24,7 @@ except ModuleNotFoundError:
     cryptography_available = False
 
 try:
+    import dns.name
     from dns import rdatatype, zone
     dnspython_available = True
 except ModuleNotFoundError:
@@ -684,7 +685,7 @@ def parse_zone_file(path, domain, minimum_ttl=3600):
     """
 
     # Let dnspython parse the zone file.
-    parsed_zone = zone.from_file(path, origin=domain, relativize=True, check_origin=False)
+    parsed_zone = zone.from_file(path, origin=domain, relativize=False, check_origin=False)
 
     # Convert the parsed data into a dictionary and do some error detection.
     record_list = []
@@ -695,9 +696,12 @@ def parse_zone_file(path, domain, minimum_ttl=3600):
         # Only one error is stored, even if the line has multiple errors.
         error = None
 
+        # Convert subname to string for further processing.
+        subname = subname.relativize(dns.name.from_text(domain)).to_text()
+
         # @ may be used for the zone apex in zone files. But we (and the deSEC API) use
         # the empty string instead.
-        if subname.to_text() == '@':
+        if subname == '@':
             subname = ''
 
         if rrset.ttl < minimum_ttl:
