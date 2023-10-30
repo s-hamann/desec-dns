@@ -150,7 +150,7 @@ class APIClient(object):
         self._token_auth = TokenAuth(token)
         self._retry_limit = retry_limit
 
-    def query(self, method, url, data=None):
+    def query(self, method, url, data=None, jsonEncode=True):
         """Query the API
 
         :method: HTTP method to use
@@ -189,10 +189,13 @@ class APIClient(object):
 
         if r.status_code == 401:
             raise AuthenticationError()
-        try:
-            response_data = r.json()
-        except ValueError:
-            response_data = None
+        if jsonEncode:
+            try:
+                response_data = r.json()
+            except ValueError:
+                response_data = None
+        else:
+            response_data = r.text
         return (r.status_code, r.headers, response_data)
 
     def parse_links(self, links):
@@ -439,6 +442,23 @@ class APIClient(object):
         else:
             raise APIError(f'Unexpected error code {code}')
 
+    def export_zonefile_domain(self, domain):
+        """Export a domain as a zonefile
+        See https://desec.readthedocs.io/en/latest/dns/domains.html#exporting-a-domain-as-zonefile
+
+        :domain: domain name
+        :returns: plain-text zonefile format 
+
+        """
+        url = f'{api_base_url}/domains/{domain}/zonefile/'
+        code, _, data = self.query('GET', url, jsonEncode=False)
+        if code == 200:
+            return data
+        elif code == 404:
+            raise NotFoundError(f'Domain {domain} not found')
+        else:
+            raise APIError(f'Unexpected error code {code}')
+    
     def get_records(self, domain, rtype=None, subname=None):
         """Return all records of a domain, possibly restricted to records of type `rtype` and
         subname `subname`
@@ -1023,6 +1043,10 @@ def main():
     p.add_argument('domain', help='domain name')
     p.add_argument('-f', '--file', required=True, help='target file name')
 
+    p = action.add_parser('export-zone', help='export all records into a zone file')
+    p.add_argument('domain', help='domain name')
+    p.add_argument('-f', '--file', required=True, help='target file name')
+ 
     p = action.add_parser('import', help='import records from a file')
     p.add_argument('domain', help='domain name')
     p.add_argument('-f', '--file', required=True, help='target file name')
@@ -1179,6 +1203,14 @@ def main():
             # Write the data to the export file in json format
             with open(arguments.file, 'w') as f:
                 json.dump(data, f)
+
+        elif arguments.action == 'export-zone':
+
+            print("Export Zone File")
+            data = api_client.export_zonefile_domain(arguments.domain)
+            # Write the data to the export file in zonefile format
+            with open(arguments.file, 'w') as f:
+                f.write(data)
 
         elif arguments.action == 'import':
 
