@@ -1206,7 +1206,6 @@ def main():
 
         elif arguments.action == 'export-zone':
 
-            print("Export Zone File")
             data = api_client.export_zonefile_domain(arguments.domain)
             # Write the data to the export file in zonefile format
             with open(arguments.file, 'w') as f:
