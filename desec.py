@@ -150,7 +150,7 @@ class APIClient(object):
         self._token_auth = TokenAuth(token)
         self._retry_limit = retry_limit
 
-    def query(self, method, url, data=None, jsonEncode=True):
+    def query(self, method, url, data=None):
         """Query the API
 
         :method: HTTP method to use
@@ -189,13 +189,23 @@ class APIClient(object):
 
         if r.status_code == 401:
             raise AuthenticationError()
-        if jsonEncode:
+        
+        # Get Header: Content-Type
+        try:
+            content_type = r.headers['Content-Type']
+        except KeyError:
+            content_type = None
+
+        # Process response data according content-type
+        if content_type == 'text/dns':
+            response_data = r.text
+        elif content_type == 'application/json':
             try:
                 response_data = r.json()
             except ValueError:
                 response_data = None
         else:
-            response_data = r.text
+            response_data = None
         return (r.status_code, r.headers, response_data)
 
     def parse_links(self, links):
@@ -451,7 +461,7 @@ class APIClient(object):
 
         """
         url = f'{api_base_url}/domains/{domain}/zonefile/'
-        code, _, data = self.query('GET', url, jsonEncode=False)
+        code, _, data = self.query('GET', url)
         if code == 200:
             return data
         elif code == 404:
