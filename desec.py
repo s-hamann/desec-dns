@@ -189,7 +189,7 @@ class APIClient(object):
 
         if r.status_code == 401:
             raise AuthenticationError()
-        
+
         # Get Header: Content-Type
         try:
             content_type = r.headers['Content-Type']
@@ -457,7 +457,7 @@ class APIClient(object):
         See https://desec.readthedocs.io/en/latest/dns/domains.html#exporting-a-domain-as-zonefile
 
         :domain: domain name
-        :returns: plain-text zonefile format 
+        :returns: plain-text zonefile format
 
         """
         url = f'{api_base_url}/domains/{domain}/zonefile/'
@@ -468,7 +468,7 @@ class APIClient(object):
             raise NotFoundError(f'Domain {domain} not found')
         else:
             raise APIError(f'Unexpected error code {code}')
-    
+
     def get_records(self, domain, rtype=None, subname=None):
         """Return all records of a domain, possibly restricted to records of type `rtype` and
         subname `subname`
@@ -1056,7 +1056,7 @@ def main():
     p = action.add_parser('export-zone', help='export all records into a zone file')
     p.add_argument('domain', help='domain name')
     p.add_argument('-f', '--file', required=True, help='target file name')
- 
+
     p = action.add_parser('import', help='import records from a file')
     p.add_argument('domain', help='domain name')
     p.add_argument('-f', '--file', required=True, help='target file name')
