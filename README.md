@@ -54,6 +54,7 @@ positional arguments:
                         DANE), removing any existing records for the same
                         port, protocol and subname
     export              export all records into a file
+    export-zone         export all records into a zone file
     import              import records from a file
     import-zone         import records from a zone file
 
