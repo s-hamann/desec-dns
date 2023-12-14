@@ -303,15 +303,15 @@ class APIClient(object):
         else:
             raise APIError(f'Unexpected error code {code}')
 
-    def list_token_domain_policies(self, token_id):
-        """Return a list of all domain policies for the given token
-        See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-domain-policy-management
+    def list_token_policies(self, token_id):
+        """Return a list of all policies for the given token
+        See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
 
         :token_id: the unique id of the token
-        :returns: list of domain policies
+        :returns: list of policies
 
         """
-        url = f'{api_base_url}/auth/tokens/{token_id}/policies/domain/'
+        url = f'{api_base_url}/auth/tokens/{token_id}/policies/rrsets/'
         code, _, data = self.query('GET', url)
         if code == 200:
             return data
@@ -893,8 +893,8 @@ def main():
     p = action.add_parser('delete-token', help='delete an authentication token')
     p.add_argument('id', help='token id')
 
-    p = action.add_parser('list-token-domain-policies',
-                          help='list all domain policies of an authentication token')
+    p = action.add_parser('list-token-policies',
+                          help='list all policies of an authentication token')
     p.add_argument('id', help='token id')
 
     p = action.add_parser('add-token-domain-policy',
@@ -1107,9 +1107,9 @@ def main():
 
             data = api_client.delete_token(arguments.id)
 
-        elif arguments.action == 'list-token-domain-policies':
+        elif arguments.action == 'list-token-policies':
 
-            policies = api_client.list_token_domain_policies(arguments.id)
+            policies = api_client.list_token_policies(arguments.id)
             pprint(policies)
 
         elif arguments.action == 'add-token-domain-policy':

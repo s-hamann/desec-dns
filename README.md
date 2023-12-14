@@ -31,8 +31,8 @@ positional arguments:
     create-token        create and return a new authentication token
     modify-token        modify an existing authentication token
     delete-token        delete an authentication token
-    list-token-domain-policies
-                        list all domain policies of an authentication token
+    list-token-policies
+                        list all policies of an authentication token
     add-token-domain-policy
                         add a domain policy for an authentication token
     modify-token-domain-policy
