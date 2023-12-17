@@ -36,8 +36,8 @@ positional arguments:
     add-token-policy    add a policy for an authentication token
     modify-token-policy
                         modify an existing policy for an authentication token
-    delete-token-domain-policy
-                        delete an existing domain policy for an authentication token
+    delete-token-policy
+                        delete an existing policy for an authentication token
     list-domains        list all registered domains
     domain-info         get information about a domain
     new-domain          create a new domain

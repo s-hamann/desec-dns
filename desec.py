@@ -379,16 +379,16 @@ class APIClient(object):
         else:
             raise APIError(f'Unexpected error code {code}')
 
-    def delete_token_domain_policy(self, token_id, domain=None):
-        """Delete an existing domain policy for the given token
-        See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-domain-policy-management
+    def delete_token_policy(self, token_id, policy_id):
+        """Delete an existing policy for the given token
+        See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
 
         :token_id: the unique id of the token
-        :domain: the domain to which the policy applies. None indicates the default policy.
+        :policy_id: the unique id of the policy
         :returns: nothing
 
         """
-        url = f'{api_base_url}/auth/tokens/{token_id}/policies/domain/{domain or "default"}/'
+        url = f'{api_base_url}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/'
         code, _, data = self.query('DELETE', url)
         if code == 204:
             pass
@@ -936,11 +936,10 @@ def main():
     perm_write.add_argument('--no-write', dest='write', action='store_false', default=None,
                              help='do not allow write access')
 
-    p = action.add_parser('delete-token-domain-policy',
-                          help='delete an existing domain policy for an authentication token')
-    p.add_argument('id', help='token id')
-    p.add_argument('--domain', default=None,
-                   help='domain to which the policy applies, omit to delete the default policy')
+    p = action.add_parser('delete-token-policy',
+                          help='delete an existing policy for an authentication token')
+    p.add_argument('token_id', help='token id')
+    p.add_argument('policy_id', help='policy id')
 
     p = action.add_parser('list-domains', help='list all registered domains')
 
@@ -1139,9 +1138,9 @@ def main():
                                                     arguments.type, arguments.write)
             pprint(policy)
 
-        elif arguments.action == 'delete-token-domain-policy':
+        elif arguments.action == 'delete-token-policy':
 
-            api_client.delete_token_domain_policy(arguments.id, arguments.domain)
+            api_client.delete_token_policy(arguments.token_id, arguments.policy_id)
 
         elif arguments.action == 'list-domains':
 
