@@ -345,29 +345,37 @@ class APIClient(object):
         else:
             raise APIError(f'Unexpected error code {code}')
 
-    def modify_token_domain_policy(self, token_id, domain=None, perm_dyndns=None,
-                                   perm_rrsets=None):
-        """Modify an existing domain policy for the given token
-        See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-domain-policy-management
+    def modify_token_policy(self, token_id, policy_id, domain=False, subname=False, rtype=False,
+                            perm_write=None):
+        """Modify an existing policy for the given token
+        See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
 
         :token_id: the unique id of the token
-        :domain: the domain to which the policy applies. None indicates the default policy.
-        :perm_dyndns: boolean indicating whether to allow dynDNS updates
-        :perm_rrsets: boolean indicating whether to allow general RRset management
-        :returns: the new domain policy
+        :policy_id: the unique id of the policy
+        :domain: the domain to which the policy applies. None indicates the default policy. False leaves the value unchanged.
+        :subname: DNS entry name. None indicates the default policy. False leaves the value unchanged.
+        :rtype: DNS record type. None indicates the default policy. False leaves the value unchanged.
+        :perm_write: boolean indicating whether to allow or deny writes. None leaves the value unchanged.
+        :returns: the new policy
 
         """
-        url = f'{api_base_url}/auth/tokens/{token_id}/policies/domain/{domain or "default"}/'
+        url = f'{api_base_url}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/'
         request_data = {}
-        if perm_dyndns is not None:
-            request_data['perm_dyndns'] = perm_dyndns
-        if perm_rrsets is not None:
-            request_data['perm_rrsets'] = perm_rrsets
+        if domain is not False:
+            request_data['domain'] = domain
+        if subname is not False:
+            request_data['subname'] = subname
+        if rtype is not False:
+            request_data['type'] = rtype
+        if perm_write is not None:
+            request_data['perm_write'] = perm_write
         code, _, data = self.query('PATCH', url, request_data)
         if code == 200:
             return data
         elif code == 403:
             raise APIError('Insufficient permissions to manage tokens')
+        elif code == 409:
+            raise APIError('A conflicting policy exists')
         else:
             raise APIError(f'Unexpected error code {code}')
 
@@ -911,21 +919,22 @@ def main():
                    help='subname to which the policy applies')
     p.add_argument('--write', action='store_true', default=False, help='allow write access')
 
-    p = action.add_parser('modify-token-domain-policy',
-                          help='modify an existing domain policy for an authentication token')
-    p.add_argument('id', help='token id')
-    p.add_argument('--domain', default=None,
-                   help='domain to which the policy applies, omit to modify the default policy')
-    perm_dyndns = p.add_mutually_exclusive_group()
-    perm_dyndns.add_argument('--dyndns', dest='dyndns', action='store_true', default=None,
-                             help='allow dynDNS updates')
-    perm_dyndns.add_argument('--no-dyndns', dest='dyndns', action='store_false', default=None,
-                             help='do not allow dynDNS updates')
-    perm_rrsets = p.add_mutually_exclusive_group()
-    perm_rrsets.add_argument('--rrsets', dest='rrsets', action='store_true', default=None,
-                             help='allow general RRset management')
-    perm_rrsets.add_argument('--no-rrsets', dest='rrsets', action='store_false', default=None,
-                             help='do not allow general RRset management')
+    p = action.add_parser('modify-token-policy',
+                          help='modify an existing policy for an authentication token')
+    p.add_argument('token_id', help='token id')
+    p.add_argument('policy_id', help='policy id')
+    p.add_argument('--domain', default=False,
+                   help='domain to which the policy applies')
+    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE', default=False,
+                   help='record type to which the policy applies')
+    p.add_argument('-s', '--subname', default=False,
+                   help='subname to which the policy applies')
+
+    perm_write = p.add_mutually_exclusive_group()
+    perm_write.add_argument('--write', dest='write', action='store_true', default=None,
+                             help='allow write access')
+    perm_write.add_argument('--no-write', dest='write', action='store_false', default=None,
+                             help='do not allow write access')
 
     p = action.add_parser('delete-token-domain-policy',
                           help='delete an existing domain policy for an authentication token')
@@ -1078,7 +1087,7 @@ def main():
                     help='just parse zone data, but do not write it to the API')
 
     arguments = parser.parse_args()
-    del action, token, perm_manage_tokens, perm_dyndns, perm_rrsets, p, parser
+    del action, token, perm_manage_tokens, perm_write, p, parser
 
     if arguments.token:
         token = arguments.token
@@ -1123,10 +1132,11 @@ def main():
                                                  arguments.type, arguments.write)
             pprint(policy)
 
-        elif arguments.action == 'modify-token-domain-policy':
+        elif arguments.action == 'modify-token-policy':
 
-            policy = api_client.modify_token_domain_policy(arguments.id, arguments.domain,
-                                                           arguments.dyndns, arguments.rrsets)
+            policy = api_client.modify_token_policy(arguments.token_id, arguments.policy_id,
+                                                    arguments.domain, arguments.subname,
+                                                    arguments.type, arguments.write)
             pprint(policy)
 
         elif arguments.action == 'delete-token-domain-policy':
