@@ -35,7 +35,7 @@ api_base_url = 'https://desec.io/api/v1'
 record_types = ('A', 'AAAA', 'AFSDB', 'APL', 'CAA', 'CDNSKEY', 'CDS', 'CERT', 'CNAME', 'DHCID',
                 'DNAME', 'DNSKEY', 'DLV', 'DS', 'EUI48', 'EUI64', 'HINFO', 'HTTPS', 'KX', 'LOC',
                 'MX', 'NAPTR', 'NS', 'OPENPGPKEY', 'PTR', 'RP', 'SMIMEA', 'SPF', 'SRV', 'SSHFP',
-                'SVBC', 'TLSA', 'TXT', 'URI')
+                'SVCB', 'TLSA', 'TXT', 'URI')
 
 ERR_INVALID_PARAMETERS = 3
 ERR_API = 4
