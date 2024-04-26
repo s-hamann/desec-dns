@@ -126,7 +126,7 @@ class TokenAuth(requests.auth.AuthBase):
         return r
 
 
-class TLSAField(object):
+class TLSAField:
     """Abstract class for TLSA fields that handles numeric values and symbolic names
     interchangably"""
 
@@ -179,7 +179,7 @@ class TLSAMatchType(TLSAField):
     valid_values = ["FULL", "SHA2-256", "SHA2-512"]
 
 
-class APIClient(object):
+class APIClient:
     """deSEC.io API client"""
 
     def __init__(self, token, retry_limit=3):
