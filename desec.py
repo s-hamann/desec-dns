@@ -9,6 +9,7 @@ import re
 import sys
 import time
 from datetime import datetime
+from enum import IntEnum
 from hashlib import sha256, sha512
 from pprint import pprint
 
@@ -71,48 +72,53 @@ record_types = (
     "URI",
 )
 
-ERR_INVALID_PARAMETERS = 3
-ERR_API = 4
-ERR_AUTH = 5
-ERR_NOT_FOUND = 6
-ERR_TLSA_CHECK = 7
-ERR_RATE_LIMIT = 8
+
+class ExitCode(IntEnum):
+    """Error codes use by the CLI tool and API related exceptions."""
+
+    OK = 0
+    INVALID_PARAMETERS = 3
+    API = 4
+    AUTH = 5
+    NOT_FOUND = 6
+    TLSA_CHECK = 7
+    RATE_LIMIT = 8
 
 
 class APIError(Exception):
     """Exception for errors returned by the API"""
 
-    error_code = ERR_API
+    error_code = ExitCode.API
 
 
 class AuthenticationError(APIError):
     """Exception for authentication failure"""
 
-    error_code = ERR_AUTH
+    error_code = ExitCode.AUTH
 
 
 class NotFoundError(APIError):
     """Exception when data can not be found"""
 
-    error_code = ERR_NOT_FOUND
+    error_code = ExitCode.NOT_FOUND
 
 
 class ParameterError(APIError):
     """Exception for invalid parameters, such as DNS records"""
 
-    error_code = ERR_INVALID_PARAMETERS
+    error_code = ExitCode.INVALID_PARAMETERS
 
 
 class TLSACheckError(APIError):
     """Exception for TLSA record setup sanity check errors"""
 
-    error_code = ERR_TLSA_CHECK
+    error_code = ExitCode.TLSA_CHECK
 
 
 class RateLimitError(APIError):
     """Exception for API rate limits"""
 
-    error_code = ERR_RATE_LIMIT
+    error_code = ExitCode.RATE_LIMIT
 
 
 class TokenAuth(requests.auth.AuthBase):
