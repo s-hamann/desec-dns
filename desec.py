@@ -19,6 +19,7 @@ try:
     from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives.serialization import Encoding
     from cryptography.hazmat.primitives.serialization import PublicFormat
+
     cryptography_available = True
 except ModuleNotFoundError:
     cryptography_available = False
@@ -26,16 +27,49 @@ except ModuleNotFoundError:
 try:
     import dns.name
     from dns import rdatatype, zone
+
     dnspython_available = True
 except ModuleNotFoundError:
     dnspython_available = False
 
 
-api_base_url = 'https://desec.io/api/v1'
-record_types = ('A', 'AAAA', 'AFSDB', 'APL', 'CAA', 'CDNSKEY', 'CDS', 'CERT', 'CNAME', 'DHCID',
-                'DNAME', 'DNSKEY', 'DLV', 'DS', 'EUI48', 'EUI64', 'HINFO', 'HTTPS', 'KX', 'LOC',
-                'MX', 'NAPTR', 'NS', 'OPENPGPKEY', 'PTR', 'RP', 'SMIMEA', 'SPF', 'SRV', 'SSHFP',
-                'SVCB', 'TLSA', 'TXT', 'URI')
+api_base_url = "https://desec.io/api/v1"
+record_types = (
+    "A",
+    "AAAA",
+    "AFSDB",
+    "APL",
+    "CAA",
+    "CDNSKEY",
+    "CDS",
+    "CERT",
+    "CNAME",
+    "DHCID",
+    "DNAME",
+    "DNSKEY",
+    "DLV",
+    "DS",
+    "EUI48",
+    "EUI64",
+    "HINFO",
+    "HTTPS",
+    "KX",
+    "LOC",
+    "MX",
+    "NAPTR",
+    "NS",
+    "OPENPGPKEY",
+    "PTR",
+    "RP",
+    "SMIMEA",
+    "SPF",
+    "SRV",
+    "SSHFP",
+    "SVCB",
+    "TLSA",
+    "TXT",
+    "URI",
+)
 
 ERR_INVALID_PARAMETERS = 3
 ERR_API = 4
@@ -47,48 +81,52 @@ ERR_RATE_LIMIT = 8
 
 class APIError(Exception):
     """Exception for errors returned by the API"""
+
     error_code = ERR_API
 
 
 class AuthenticationError(APIError):
     """Exception for authentication failure"""
+
     error_code = ERR_AUTH
 
 
 class NotFoundError(APIError):
     """Exception when data can not be found"""
+
     error_code = ERR_NOT_FOUND
 
 
 class ParameterError(APIError):
     """Exception for invalid parameters, such as DNS records"""
+
     error_code = ERR_INVALID_PARAMETERS
 
 
 class TLSACheckError(APIError):
     """Exception for TLSA record setup sanity check errors"""
+
     error_code = ERR_TLSA_CHECK
 
 
 class RateLimitError(APIError):
     """Exception for API rate limits"""
+
     error_code = ERR_RATE_LIMIT
 
 
 class TokenAuth(requests.auth.AuthBase):
-
     """Token-based authentication for requests"""
 
     def __init__(self, token):
         self.token = token
 
     def __call__(self, r):
-        r.headers['Authorization'] = f'Token {self.token}'
+        r.headers["Authorization"] = f"Token {self.token}"
         return r
 
 
 class TLSAField(object):
-
     """Abstract class for TLSA fields that handles numeric values and symbolic names
     interchangably"""
 
@@ -115,7 +153,7 @@ class TLSAField(object):
 
     def __repr__(self):
         if self._value is None:
-            return ''
+            return ""
         else:
             return self.valid_values[self._value]
 
@@ -125,21 +163,23 @@ class TLSAField(object):
 
 class TLSAUsage(TLSAField):
     """TLSA certificate usage information"""
-    valid_values = ['PKIX-TA', 'PKIX-EE', 'DANE-TA', 'DANE-EE']
+
+    valid_values = ["PKIX-TA", "PKIX-EE", "DANE-TA", "DANE-EE"]
 
 
 class TLSASelector(TLSAField):
     """TLSA selector"""
-    valid_values = ['CERT', 'SPKI']
+
+    valid_values = ["CERT", "SPKI"]
 
 
 class TLSAMatchType(TLSAField):
     """TLSA match type"""
-    valid_values = ['FULL', 'SHA2-256', 'SHA2-512']
+
+    valid_values = ["FULL", "SHA2-256", "SHA2-512"]
 
 
 class APIClient(object):
-
     """deSEC.io API client"""
 
     def __init__(self, token, retry_limit=3):
@@ -159,7 +199,7 @@ class APIClient(object):
         :returns: (status code, response headers, response data)
 
         """
-        if method == 'GET' or method == 'DELETE':
+        if method == "GET" or method == "DELETE":
             params = data
             body = None
         else:
@@ -179,27 +219,27 @@ class APIClient(object):
                 break
             # Handle rate limiting. See https://desec.readthedocs.io/en/latest/rate-limits.html
             try:
-                retry_after = int(r.headers['Retry-After'])
+                retry_after = int(r.headers["Retry-After"])
             except (KeyError, ValueError) as e:
                 # Retry-After header is missing or not an integer. This should never happen.
-                raise RateLimitError(r.json()['detail'] + '\n' + e.message)
+                raise RateLimitError(r.json()["detail"] + "\n" + e.message)
         else:
             # Reached retry_limit (or it is 0) without any other response than 429.
-            raise RateLimitError(r.json()['detail'])
+            raise RateLimitError(r.json()["detail"])
 
         if r.status_code == 401:
             raise AuthenticationError()
 
         # Get Header: Content-Type
         try:
-            content_type = r.headers['Content-Type']
+            content_type = r.headers["Content-Type"]
         except KeyError:
             content_type = None
 
         # Process response data according content-type
-        if content_type == 'text/dns':
+        if content_type == "text/dns":
             response_data = r.text
-        elif content_type == 'application/json':
+        elif content_type == "application/json":
             try:
                 response_data = r.json()
             except ValueError:
@@ -217,8 +257,8 @@ class APIClient(object):
 
         """
         mapping = {}
-        for link in links.split(', '):
-            _url, label = link.split('; ')
+        for link in links.split(", "):
+            _url, label = link.split("; ")
             label = re.search('rel="(.*)"', label).group(1)
             _url = _url[1:-1]
             assert label not in mapping
@@ -232,16 +272,16 @@ class APIClient(object):
         :returns: dict containing tokens and information about them
 
         """
-        url = f'{api_base_url}/auth/tokens/'
-        code, _, data = self.query('GET', url)
+        url = f"{api_base_url}/auth/tokens/"
+        code, _, data = self.query("GET", url)
         if code == 200:
             return data
         elif code == 403:
-            raise APIError('Insufficient permissions to manage tokens')
+            raise APIError("Insufficient permissions to manage tokens")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
-    def create_token(self, name='', manage_tokens=None):
+    def create_token(self, name="", manage_tokens=None):
         """Create a new authentication token.
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#create-additional-tokens
 
@@ -250,17 +290,17 @@ class APIClient(object):
         :returns: the newly created token
 
         """
-        url = f'{api_base_url}/auth/tokens/'
-        request_data = {'name': name}
+        url = f"{api_base_url}/auth/tokens/"
+        request_data = {"name": name}
         if manage_tokens is not None:
-            request_data['perm_manage_tokens'] = manage_tokens
-        code, _, data = self.query('POST', url, request_data)
+            request_data["perm_manage_tokens"] = manage_tokens
+        code, _, data = self.query("POST", url, request_data)
         if code == 201:
             return data
         elif code == 403:
-            raise APIError('Insufficient permissions to manage tokens')
+            raise APIError("Insufficient permissions to manage tokens")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def modify_token(self, token_id, name=None, manage_tokens=None):
         """Modify an existing authentication token.
@@ -272,19 +312,19 @@ class APIClient(object):
         :returns: changed token information
 
         """
-        url = f'{api_base_url}/auth/tokens/{token_id}/'
+        url = f"{api_base_url}/auth/tokens/{token_id}/"
         request_data = {}
         if name is not None:
-            request_data['name'] = name
+            request_data["name"] = name
         if manage_tokens is not None:
-            request_data['perm_manage_tokens'] = manage_tokens
-        code, _, data = self.query('PATCH', url, request_data)
+            request_data["perm_manage_tokens"] = manage_tokens
+        code, _, data = self.query("PATCH", url, request_data)
         if code == 200:
             return data
         elif code == 403:
-            raise APIError('Insufficient permissions to manage tokens')
+            raise APIError("Insufficient permissions to manage tokens")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def delete_token(self, token_id):
         """Delete an authentication token
@@ -294,14 +334,14 @@ class APIClient(object):
         :returns: nothing
 
         """
-        url = f'{api_base_url}/auth/tokens/{token_id}/'
-        code, _, data = self.query('DELETE', url)
+        url = f"{api_base_url}/auth/tokens/{token_id}/"
+        code, _, data = self.query("DELETE", url)
         if code == 204:
             pass
         elif code == 403:
-            raise APIError('Insufficient permissions to manage tokens')
+            raise APIError("Insufficient permissions to manage tokens")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def list_token_policies(self, token_id):
         """Return a list of all policies for the given token
@@ -311,14 +351,14 @@ class APIClient(object):
         :returns: list of policies
 
         """
-        url = f'{api_base_url}/auth/tokens/{token_id}/policies/rrsets/'
-        code, _, data = self.query('GET', url)
+        url = f"{api_base_url}/auth/tokens/{token_id}/policies/rrsets/"
+        code, _, data = self.query("GET", url)
         if code == 200:
             return data
         elif code == 403:
-            raise APIError('Insufficient permissions to manage tokens')
+            raise APIError("Insufficient permissions to manage tokens")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def add_token_policy(self, token_id, domain=None, subname=None, rtype=None, perm_write=False):
         """Add a policy to the given token
@@ -332,21 +372,26 @@ class APIClient(object):
         :returns: the new policy
 
         """
-        url = f'{api_base_url}/auth/tokens/{token_id}/policies/rrsets/'
-        request_data = {'domain': domain, 'subname': subname, 'type': rtype,
-                        'perm_write': perm_write}
-        code, _, data = self.query('POST', url, request_data)
+        url = f"{api_base_url}/auth/tokens/{token_id}/policies/rrsets/"
+        request_data = {
+            "domain": domain,
+            "subname": subname,
+            "type": rtype,
+            "perm_write": perm_write,
+        }
+        code, _, data = self.query("POST", url, request_data)
         if code == 201:
             return data
         elif code == 403:
-            raise APIError('Insufficient permissions to manage tokens')
+            raise APIError("Insufficient permissions to manage tokens")
         elif code == 409:
-            raise APIError('A conflicting policy exists')
+            raise APIError("A conflicting policy exists")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
-    def modify_token_policy(self, token_id, policy_id, domain=False, subname=False, rtype=False,
-                            perm_write=None):
+    def modify_token_policy(
+        self, token_id, policy_id, domain=False, subname=False, rtype=False, perm_write=None
+    ):
         """Modify an existing policy for the given token
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
 
@@ -359,25 +404,25 @@ class APIClient(object):
         :returns: the new policy
 
         """
-        url = f'{api_base_url}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/'
+        url = f"{api_base_url}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
         request_data = {}
         if domain is not False:
-            request_data['domain'] = domain
+            request_data["domain"] = domain
         if subname is not False:
-            request_data['subname'] = subname
+            request_data["subname"] = subname
         if rtype is not False:
-            request_data['type'] = rtype
+            request_data["type"] = rtype
         if perm_write is not None:
-            request_data['perm_write'] = perm_write
-        code, _, data = self.query('PATCH', url, request_data)
+            request_data["perm_write"] = perm_write
+        code, _, data = self.query("PATCH", url, request_data)
         if code == 200:
             return data
         elif code == 403:
-            raise APIError('Insufficient permissions to manage tokens')
+            raise APIError("Insufficient permissions to manage tokens")
         elif code == 409:
-            raise APIError('A conflicting policy exists')
+            raise APIError("A conflicting policy exists")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def delete_token_policy(self, token_id, policy_id):
         """Delete an existing policy for the given token
@@ -388,14 +433,14 @@ class APIClient(object):
         :returns: nothing
 
         """
-        url = f'{api_base_url}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/'
-        code, _, data = self.query('DELETE', url)
+        url = f"{api_base_url}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
+        code, _, data = self.query("DELETE", url)
         if code == 204:
             pass
         elif code == 403:
-            raise APIError('Insufficient permissions to manage tokens')
+            raise APIError("Insufficient permissions to manage tokens")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def list_domains(self):
         """Return a list of all registered domains
@@ -404,12 +449,12 @@ class APIClient(object):
         :returns: list of domain names
 
         """
-        url = f'{api_base_url}/domains/'
-        code, _, data = self.query('GET', url)
+        url = f"{api_base_url}/domains/"
+        code, _, data = self.query("GET", url)
         if code == 200:
-            return [domain['name'] for domain in data]
+            return [domain["name"] for domain in data]
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def domain_info(self, domain):
         """Return basic information about a domain
@@ -419,14 +464,14 @@ class APIClient(object):
         :returns: dict containing domain information
 
         """
-        url = f'{api_base_url}/domains/{domain}/'
-        code, _, data = self.query('GET', url)
+        url = f"{api_base_url}/domains/{domain}/"
+        code, _, data = self.query("GET", url)
         if code == 200:
             return data
         elif code == 404:
-            raise NotFoundError(f'Domain {domain} not found')
+            raise NotFoundError(f"Domain {domain} not found")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def new_domain(self, domain):
         """Create a new domain
@@ -436,18 +481,18 @@ class APIClient(object):
         :returns: dict containing domain information
 
         """
-        url = f'{api_base_url}/domains/'
-        code, _, data = self.query('POST', url, data={'name': domain})
+        url = f"{api_base_url}/domains/"
+        code, _, data = self.query("POST", url, data={"name": domain})
         if code == 201:
             return data
         elif code == 400:
-            raise ParameterError(f'Malformed domain name {domain}')
+            raise ParameterError(f"Malformed domain name {domain}")
         elif code == 403:
-            raise APIError('Maximum number of domains reached')
+            raise APIError("Maximum number of domains reached")
         elif code == 409:
-            raise ParameterError(f'Could not create domain {domain} ({data})')
+            raise ParameterError(f"Could not create domain {domain} ({data})")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def delete_domain(self, domain):
         """Delete a domain
@@ -457,12 +502,12 @@ class APIClient(object):
         :returns: nothing
 
         """
-        url = f'{api_base_url}/domains/{domain}/'
-        code, _, data = self.query('DELETE', url)
+        url = f"{api_base_url}/domains/{domain}/"
+        code, _, data = self.query("DELETE", url)
         if code == 204:
             pass
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def export_zonefile_domain(self, domain):
         """Export a domain as a zonefile
@@ -472,14 +517,14 @@ class APIClient(object):
         :returns: plain-text zonefile format
 
         """
-        url = f'{api_base_url}/domains/{domain}/zonefile/'
-        code, _, data = self.query('GET', url)
+        url = f"{api_base_url}/domains/{domain}/zonefile/"
+        code, _, data = self.query("GET", url)
         if code == 200:
             return data
         elif code == 404:
-            raise NotFoundError(f'Domain {domain} not found')
+            raise NotFoundError(f"Domain {domain} not found")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def get_records(self, domain, rtype=None, subname=None):
         """Return all records of a domain, possibly restricted to records of type `rtype` and
@@ -492,24 +537,24 @@ class APIClient(object):
         :returns: list of dicts representing RRsets
 
         """
-        url = f'{api_base_url}/domains/{domain}/rrsets/'
-        code, headers, data = self.query('GET', url, {'subname': subname, 'type': rtype})
+        url = f"{api_base_url}/domains/{domain}/rrsets/"
+        code, headers, data = self.query("GET", url, {"subname": subname, "type": rtype})
         if code == 200:
             return data
-        elif code == 400 and 'Link' in headers:
+        elif code == 400 and "Link" in headers:
             result = []
-            links = self.parse_links(headers['Link'])
-            url = links['first']
+            links = self.parse_links(headers["Link"])
+            url = links["first"]
             while url is not None:
-                code, headers, data = self.query('GET', url)
+                code, headers, data = self.query("GET", url)
                 result += data
-                links = self.parse_links(headers['Link'])
-                url = links.get('next')
+                links = self.parse_links(headers["Link"])
+                url = links.get("next")
             return result
         elif code == 404:
-            raise NotFoundError(f'Domain {domain} not found')
+            raise NotFoundError(f"Domain {domain} not found")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def add_record(self, domain, rtype, subname, rrset, ttl):
         """Add a new RRset. There must not be a RRset for this domain-type-subname combination
@@ -523,19 +568,20 @@ class APIClient(object):
         :returns: dict representing the created RRset
 
         """
-        url = f'{api_base_url}/domains/{domain}/rrsets/'
-        code, _, data = self.query('POST', url,
-            {'subname': subname, 'type': rtype, 'records': rrset, 'ttl': ttl})
+        url = f"{api_base_url}/domains/{domain}/rrsets/"
+        code, _, data = self.query(
+            "POST", url, {"subname": subname, "type": rtype, "records": rrset, "ttl": ttl}
+        )
         if code == 201:
             return data
         elif code == 404:
-            raise NotFoundError(f'Domain {domain} not found')
+            raise NotFoundError(f"Domain {domain} not found")
         elif code == 422:
-            raise ParameterError(f'Invalid RRset {rrset} for {rtype} record {subname}.{domain}')
+            raise ParameterError(f"Invalid RRset {rrset} for {rtype} record {subname}.{domain}")
         elif code == 400:
-            raise APIError(f'Could not create RRset {rrset} for {rtype} record {subname}.{domain}')
+            raise APIError(f"Could not create RRset {rrset} for {rtype} record {subname}.{domain}")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def update_bulk_record(self, domain, rrset_list, exclusive=False):
         """Update RRsets in bulk.
@@ -545,26 +591,26 @@ class APIClient(object):
         :rrset_list: List of RRsets
         :exclusive: Boolean. If True, all DNS records not in rrset_list are removed.
         """
-        url = f'{api_base_url}/domains/{domain}/rrsets/'
+        url = f"{api_base_url}/domains/{domain}/rrsets/"
 
         if exclusive:
             # Delete all records not in rrset_list by adding RRsets with an empty 'records'
             # field for them.
-            existing_records = [(r['subname'], r['type']) for r in rrset_list]
+            existing_records = [(r["subname"], r["type"]) for r in rrset_list]
             for r in self.get_records(domain):
-                if (r['subname'], r['type']) not in existing_records:
-                    rrset_list.append({'subname': r['subname'], 'type': r['type'], 'records': []})
+                if (r["subname"], r["type"]) not in existing_records:
+                    rrset_list.append({"subname": r["subname"], "type": r["type"], "records": []})
 
-        code, _, data = self.query('PATCH', url, rrset_list)
+        code, _, data = self.query("PATCH", url, rrset_list)
 
         if code == 200:
             return data
         elif code == 400:
-            raise APIError(f'Could not create RRsets. Errors: {data}')
+            raise APIError(f"Could not create RRsets. Errors: {data}")
         elif code == 404:
-            raise NotFoundError(f'Domain {domain} not found')
+            raise NotFoundError(f"Domain {domain} not found")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def change_record(self, domain, rtype, subname, rrset=None, ttl=None):
         """Change an existing RRset. Existing data is replaced by the provided `rrset` and `ttl`
@@ -579,24 +625,25 @@ class APIClient(object):
         :returns: dict representing the changed RRset
 
         """
-        url = f'{api_base_url}/domains/{domain}/rrsets/{subname}.../{rtype}/'
+        url = f"{api_base_url}/domains/{domain}/rrsets/{subname}.../{rtype}/"
         request_data = {}
         if rrset:
-            request_data['records'] = rrset
+            request_data["records"] = rrset
         if ttl:
-            request_data['ttl'] = ttl
-        code, _, data = self.query('PATCH', url, data=request_data)
+            request_data["ttl"] = ttl
+        code, _, data = self.query("PATCH", url, data=request_data)
         if code == 200:
             return data
         elif code == 404:
-            raise NotFoundError(f'RRset {rrset} for {rtype} record {subname}.{domain} not found')
+            raise NotFoundError(f"RRset {rrset} for {rtype} record {subname}.{domain} not found")
         elif code == 400:
             raise ParameterError(
-                f'Missing data for changing RRset {rrset} for {rtype} record {subname}.{domain}')
+                f"Missing data for changing RRset {rrset} for {rtype} record {subname}.{domain}"
+            )
         elif code == 422:
-            raise ParameterError(f'Invalid RRset {rrset} for {rtype} record {subname}.{domain}')
+            raise ParameterError(f"Invalid RRset {rrset} for {rtype} record {subname}.{domain}")
         else:
-            raise APIError(f'Unexpected error code {code}')
+            raise APIError(f"Unexpected error code {code}")
 
     def delete_record(self, domain, rtype, subname, rrset=None):
         """Delete an existing RRset or records from an RRset
@@ -621,20 +668,20 @@ class APIClient(object):
                 # nothing to delete.
                 return
             # Remove records that are in `rrset` from `data`.
-            records_to_keep = [r for r in data['records'] if r not in rrset]
+            records_to_keep = [r for r in data["records"] if r not in rrset]
         if records_to_keep:
             # Some records should be kept, use change_record for that
             self.change_record(domain, rtype, subname, records_to_keep)
         else:
             # Nothing should be kept, delete the whole RRset
-            url = f'{api_base_url}/domains/{domain}/rrsets/{subname}.../{rtype}/'
-            code, _, data = self.query('DELETE', url)
+            url = f"{api_base_url}/domains/{domain}/rrsets/{subname}.../{rtype}/"
+            code, _, data = self.query("DELETE", url)
             if code == 204:
                 pass
             elif code == 404:
-                raise NotFoundError(f'Domain {domain} not found')
+                raise NotFoundError(f"Domain {domain} not found")
             else:
-                raise APIError(f'Unexpected error code {code}')
+                raise APIError(f"Unexpected error code {code}")
 
     def update_record(self, domain, rtype, subname, rrset, ttl=None):
         """Change an existing RRset or create a new one. Records are added to the existing records
@@ -655,7 +702,7 @@ class APIClient(object):
             return self.add_record(domain, rtype, subname, rrset, ttl)
         else:
             # Update the existing records with the given ones
-            rrset.extend(data[0]['records'])
+            rrset.extend(data[0]["records"])
             return self.change_record(domain, rtype, subname, rrset)
 
 
@@ -667,8 +714,8 @@ def print_records(rrset, **kwargs):
     :returns: nothing
 
     """
-    for record in rrset['records']:
-        line = (f'{rrset["name"]} {rrset["ttl"]} IN {rrset["type"]} {record}')
+    for record in rrset["records"]:
+        line = f"{rrset['name']} {rrset['ttl']} IN {rrset['type']} {record}"
         print(line, **kwargs)
 
 
@@ -695,19 +742,19 @@ def sanitize_records(rtype, subname, rrset):
     :returns: list of DNS record contents
 
     """
-    if rtype == 'CNAME' and rrset and len(rrset) > 1:
+    if rtype == "CNAME" and rrset and len(rrset) > 1:
         # Multiple CNAME records in the same rrset are not legal.
-        raise ParameterError('Multiple CNAME records are not allowed.')
-    if rtype in ('CNAME', 'MX', 'NS') and rrset:
+        raise ParameterError("Multiple CNAME records are not allowed.")
+    if rtype in ("CNAME", "MX", "NS") and rrset:
         # CNAME and MX records must end in a .
-        rrset = [r + '.' if r[-1] != '.' else r for r in rrset]
-    if rtype == 'CNAME' and subname == '':
+        rrset = [r + "." if r[-1] != "." else r for r in rrset]
+    if rtype == "CNAME" and subname == "":
         # CNAME in the zone apex can break the zone
-        raise ParameterError('CNAME records in the zone apex are not allowed.')
-    if (rtype == 'NS' and rrset and any(['*' in r for r in rrset])):
+        raise ParameterError("CNAME records in the zone apex are not allowed.")
+    if rtype == "NS" and rrset and any(["*" in r for r in rrset]):
         # Wildcard NS records do not play well with DNSSEC
-        raise ParameterError('Wildcard NS records are not allowed.')
-    if rtype == 'TXT' and rrset:
+        raise ParameterError("Wildcard NS records are not allowed.")
+    if rtype == "TXT" and rrset:
         # TXT records must be in ""
         rrset = [f'"{r}"' if r[0] != '"' or r[-1] != '"' else r for r in rrset]
     return rrset
@@ -732,7 +779,6 @@ def parse_zone_file(path, domain, minimum_ttl=3600):
     # Convert the parsed data into a dictionary and do some error detection.
     record_list = []
     for subname, rrset in parsed_zone.iterate_rdatasets():
-
         # Store error information of the current rrset as a dict of a human-readable
         # error message and a boolean indicating whether the error was fixed.
         # Only one error is stored, even if the line has multiple errors.
@@ -743,31 +789,35 @@ def parse_zone_file(path, domain, minimum_ttl=3600):
 
         # @ may be used for the zone apex in zone files. But we (and the deSEC API) use
         # the empty string instead.
-        if subname == '@':
-            subname = ''
+        if subname == "@":
+            subname = ""
 
         if rrset.ttl < minimum_ttl:
             error = {
-                'error_msg': f'TTL {rrset.ttl} smaller than minimum of {minimum_ttl} seconds.',
-                'error_recovered': True
+                "error_msg": f"TTL {rrset.ttl} smaller than minimum of {minimum_ttl} seconds.",
+                "error_recovered": True,
             }
             rrset.ttl = minimum_ttl
 
         if rdatatype.to_text(rrset.rdtype) not in record_types:
             error = {
-                'error_msg': f'Record type {rdatatype.to_text(rrset.rdtype)} is not supported.',
-                'error_recovered': False
+                "error_msg": f"Record type {rdatatype.to_text(rrset.rdtype)} is not supported.",
+                "error_recovered": False,
             }
 
         records = [r.to_text() for r in rrset]
         try:
             records = sanitize_records(rrset.rdtype, subname, records)
         except ParameterError as e:
-            error = {'error_msg': str(e), 'error_recovered': False}
+            error = {"error_msg": str(e), "error_recovered": False}
 
-        entry = {'name': f'{subname}.{domain}.', 'subname': subname,
-                 'type': rdatatype.to_text(rrset.rdtype), 'records': records,
-                 'ttl': rrset.ttl}
+        entry = {
+            "name": f"{subname}.{domain}.",
+            "subname": subname,
+            "type": rdatatype.to_text(rrset.rdtype),
+            "records": records,
+            "ttl": rrset.ttl,
+        }
         if error is not None:
             entry.update(error)
         record_list.append(entry)
@@ -786,16 +836,23 @@ def clear_errors_from_record_list(record_list):
 
     """
     # Remove all items with non-recoverable errors.
-    record_list = [r for r in record_list if r.get('error_recovered', True)]
+    record_list = [r for r in record_list if r.get("error_recovered", True)]
     # Remove error information from the remaining items.
     for r in record_list:
-        r.pop('error_msg', None)
-        r.pop('error_recovered', None)
+        r.pop("error_msg", None)
+        r.pop("error_recovered", None)
     return record_list
 
 
-def tlsa_record(file, usage=TLSAUsage('DANE-EE'), selector=TLSASelector('Cert'),
-                match_type=TLSAMatchType('SHA2-256'), check=True, subname=None, domain=None):
+def tlsa_record(
+    file,
+    usage=TLSAUsage("DANE-EE"),
+    selector=TLSASelector("Cert"),
+    match_type=TLSAMatchType("SHA2-256"),
+    check=True,
+    subname=None,
+    domain=None,
+):
     """Return the TLSA record for the given certificate, usage, selector and match_type.
     Raise an Exception if the given parameters do not seem to make sense.
 
@@ -810,10 +867,10 @@ def tlsa_record(file, usage=TLSAUsage('DANE-EE'), selector=TLSASelector('Cert'),
 
     """
     # Read the certifiate from `file`.
-    with open(file, 'rb') as f:
+    with open(file, "rb") as f:
         cert_data = f.read()
     # Parse the certificate.
-    if cert_data.startswith(b'-----BEGIN CERTIFICATE-----'):
+    if cert_data.startswith(b"-----BEGIN CERTIFICATE-----"):
         # PEM format
         cert = x509.load_pem_x509_certificate(cert_data, default_backend())
     else:
@@ -824,266 +881,450 @@ def tlsa_record(file, usage=TLSAUsage('DANE-EE'), selector=TLSASelector('Cert'),
     if check:
         # Check certificate expiration.
         if cert.not_valid_after <= datetime.utcnow():
-            raise TLSACheckError(f'Certificate expired on {cert.not_valid_after}')
+            raise TLSACheckError(f"Certificate expired on {cert.not_valid_after}")
         # Check is usage matches the certificate's CA status.
         is_ca_cert = cert.extensions.get_extension_for_class(x509.BasicConstraints).value.ca
-        if (is_ca_cert and usage not in ['PKIX-TA', 'DANE-TA']):
-            raise TLSACheckError('CA certificate given for end entity usage. Please select a '
-                                 'different certificate or set usage to PKIX-TA or DANE-TA.')
-        elif (not is_ca_cert and usage not in ['PKIX-EE', 'DANE-EE']):
-            raise TLSACheckError('Non-CA certificate given for CA usage. Please select a '
-                                 'different certificate or set usage to PKIX-EE or DANE-EE.')
+        if is_ca_cert and usage not in ["PKIX-TA", "DANE-TA"]:
+            raise TLSACheckError(
+                "CA certificate given for end entity usage. Please select a "
+                "different certificate or set usage to PKIX-TA or DANE-TA."
+            )
+        elif not is_ca_cert and usage not in ["PKIX-EE", "DANE-EE"]:
+            raise TLSACheckError(
+                "Non-CA certificate given for CA usage. Please select a "
+                "different certificate or set usage to PKIX-EE or DANE-EE."
+            )
         # Check if any SAN matches the subname + domain
         san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
         if domain is not None:
             if subname:
-                target_name = f'{subname}.{domain}'
+                target_name = f"{subname}.{domain}"
             else:
                 target_name = domain
             for name in san.value.get_values_for_type(x509.DNSName):
                 if name == target_name:
                     break
             else:
-                sans = ', '.join(san.value.get_values_for_type(x509.DNSName))
-                raise TLSACheckError(f'Certificate is valid for {sans}, but not {target_name}.')
+                sans = ", ".join(san.value.get_values_for_type(x509.DNSName))
+                raise TLSACheckError(f"Certificate is valid for {sans}, but not {target_name}.")
 
     # Determine what to put in the TLSA record.
-    if selector == 'SPKI':
+    if selector == "SPKI":
         # Only the DER encoded public key.
-        data = cert.public_key().public_bytes(encoding=Encoding.DER,
-                                              format=PublicFormat.SubjectPublicKeyInfo)
+        data = cert.public_key().public_bytes(
+            encoding=Encoding.DER, format=PublicFormat.SubjectPublicKeyInfo
+        )
     else:
         # Full DER encoded certificate.
         data = cert.public_bytes(encoding=Encoding.DER)
 
     # Encode the data.
-    if match_type == 'Full':
+    if match_type == "Full":
         data = data.hex()
-    elif match_type == 'SHA2-256':
+    elif match_type == "SHA2-256":
         data = sha256(data).hexdigest()
-    elif match_type == 'SHA2-512':
+    elif match_type == "SHA2-512":
         data = sha512(data).hexdigest()
 
-    return f'{int(usage)} {int(selector)} {int(match_type)} {data}'
+    return f"{int(usage)} {int(selector)} {int(match_type)} {data}"
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='A simple deSEC.io API client')
-    action = parser.add_subparsers(dest='action', metavar='action')
+    parser = argparse.ArgumentParser(description="A simple deSEC.io API client")
+    action = parser.add_subparsers(dest="action", metavar="action")
     action.required = True
 
     token = parser.add_mutually_exclusive_group()
-    token.add_argument('--token', help='API authentication token')
-    token.add_argument('--token-file',
-        default=os.path.join(os.path.expanduser('~'), '.desec_auth_token'),
-        help='file containing the API authentication token (default: %(default)s)')
+    token.add_argument("--token", help="API authentication token")
+    token.add_argument(
+        "--token-file",
+        default=os.path.join(os.path.expanduser("~"), ".desec_auth_token"),
+        help="file containing the API authentication token (default: %(default)s)",
+    )
 
-    parser.add_argument('--non-blocking', dest='block', action='store_false', default=True,
-                        help="When the API's rate limit is reached, return an appropriate error.")
-    parser.add_argument('--blocking', dest='block', action='store_true', default=True,
-                        help="When the API's rate limit is reached, wait and retry the request. "
-                        "This is the default behaviour.")
+    parser.add_argument(
+        "--non-blocking",
+        dest="block",
+        action="store_false",
+        default=True,
+        help="When the API's rate limit is reached, return an appropriate error.",
+    )
+    parser.add_argument(
+        "--blocking",
+        dest="block",
+        action="store_true",
+        default=True,
+        help="When the API's rate limit is reached, wait and retry the request. "
+        "This is the default behaviour.",
+    )
 
-    p = action.add_parser('list-tokens', help='list all authentication tokens')
+    p = action.add_parser("list-tokens", help="list all authentication tokens")
 
-    p = action.add_parser('create-token', help='create and return a new authentication token')
-    p.add_argument('--name', default='', help='token name')
-    p.add_argument('--manage-tokens', action='store_true', default=False,
-                   help='create a token that can manage tokens')
+    p = action.add_parser("create-token", help="create and return a new authentication token")
+    p.add_argument("--name", default="", help="token name")
+    p.add_argument(
+        "--manage-tokens",
+        action="store_true",
+        default=False,
+        help="create a token that can manage tokens",
+    )
 
-    p = action.add_parser('modify-token', help='modify an existing authentication token')
-    p.add_argument('id', help='token id')
-    p.add_argument('--name', default=None, help='token name')
+    p = action.add_parser("modify-token", help="modify an existing authentication token")
+    p.add_argument("id", help="token id")
+    p.add_argument("--name", default=None, help="token name")
     perm_manage_tokens = p.add_mutually_exclusive_group()
-    perm_manage_tokens.add_argument('--manage-tokens', dest='manage_tokens', action='store_true',
-                                    default=None, help='allow this token to manage tokens')
-    perm_manage_tokens.add_argument('--no-manage-tokens', dest='manage_tokens',
-                                    action='store_false', default=None,
-                                    help='do not allow this token to manage tokens')
+    perm_manage_tokens.add_argument(
+        "--manage-tokens",
+        dest="manage_tokens",
+        action="store_true",
+        default=None,
+        help="allow this token to manage tokens",
+    )
+    perm_manage_tokens.add_argument(
+        "--no-manage-tokens",
+        dest="manage_tokens",
+        action="store_false",
+        default=None,
+        help="do not allow this token to manage tokens",
+    )
 
-    p = action.add_parser('delete-token', help='delete an authentication token')
-    p.add_argument('id', help='token id')
+    p = action.add_parser("delete-token", help="delete an authentication token")
+    p.add_argument("id", help="token id")
 
-    p = action.add_parser('list-token-policies',
-                          help='list all policies of an authentication token')
-    p.add_argument('id', help='token id')
+    p = action.add_parser(
+        "list-token-policies", help="list all policies of an authentication token"
+    )
+    p.add_argument("id", help="token id")
 
-    p = action.add_parser('add-token-policy', help='add a policy for an authentication token')
-    p.add_argument('id', help='token id')
-    p.add_argument('--domain', default=None,
-                   help='domain to which the policy applies')
-    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE', default=None,
-                   help='record type to which the policy applies')
-    p.add_argument('-s', '--subname', default=None,
-                   help='subname to which the policy applies')
-    p.add_argument('--write', action='store_true', default=False, help='allow write access')
+    p = action.add_parser("add-token-policy", help="add a policy for an authentication token")
+    p.add_argument("id", help="token id")
+    p.add_argument("--domain", default=None, help="domain to which the policy applies")
+    p.add_argument(
+        "-t",
+        "--type",
+        choices=record_types,
+        metavar="TYPE",
+        default=None,
+        help="record type to which the policy applies",
+    )
+    p.add_argument("-s", "--subname", default=None, help="subname to which the policy applies")
+    p.add_argument("--write", action="store_true", default=False, help="allow write access")
 
-    p = action.add_parser('modify-token-policy',
-                          help='modify an existing policy for an authentication token')
-    p.add_argument('token_id', help='token id')
-    p.add_argument('policy_id', help='policy id')
-    p.add_argument('--domain', default=False,
-                   help='domain to which the policy applies')
-    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE', default=False,
-                   help='record type to which the policy applies')
-    p.add_argument('-s', '--subname', default=False,
-                   help='subname to which the policy applies')
+    p = action.add_parser(
+        "modify-token-policy", help="modify an existing policy for an authentication token"
+    )
+    p.add_argument("token_id", help="token id")
+    p.add_argument("policy_id", help="policy id")
+    p.add_argument("--domain", default=False, help="domain to which the policy applies")
+    p.add_argument(
+        "-t",
+        "--type",
+        choices=record_types,
+        metavar="TYPE",
+        default=False,
+        help="record type to which the policy applies",
+    )
+    p.add_argument("-s", "--subname", default=False, help="subname to which the policy applies")
 
     perm_write = p.add_mutually_exclusive_group()
-    perm_write.add_argument('--write', dest='write', action='store_true', default=None,
-                             help='allow write access')
-    perm_write.add_argument('--no-write', dest='write', action='store_false', default=None,
-                             help='do not allow write access')
+    perm_write.add_argument(
+        "--write", dest="write", action="store_true", default=None, help="allow write access"
+    )
+    perm_write.add_argument(
+        "--no-write",
+        dest="write",
+        action="store_false",
+        default=None,
+        help="do not allow write access",
+    )
 
-    p = action.add_parser('delete-token-policy',
-                          help='delete an existing policy for an authentication token')
-    p.add_argument('token_id', help='token id')
-    p.add_argument('policy_id', help='policy id')
+    p = action.add_parser(
+        "delete-token-policy", help="delete an existing policy for an authentication token"
+    )
+    p.add_argument("token_id", help="token id")
+    p.add_argument("policy_id", help="policy id")
 
-    p = action.add_parser('list-domains', help='list all registered domains')
+    p = action.add_parser("list-domains", help="list all registered domains")
 
-    p = action.add_parser('domain-info', help='get information about a domain')
-    p.add_argument('domain', help='domain name')
+    p = action.add_parser("domain-info", help="get information about a domain")
+    p.add_argument("domain", help="domain name")
 
-    p = action.add_parser('new-domain', help='create a new domain')
-    p.add_argument('domain', help='domain name')
+    p = action.add_parser("new-domain", help="create a new domain")
+    p.add_argument("domain", help="domain name")
 
-    p = action.add_parser('delete-domain', help='delete a domain')
-    p.add_argument('domain', help='domain name')
+    p = action.add_parser("delete-domain", help="delete a domain")
+    p.add_argument("domain", help="domain name")
 
-    p = action.add_parser('get-records', help='list all records of a domain')
-    p.add_argument('domain', help='domain name')
-    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE',
-        help='list only records of the given type')
-    p.add_argument('-s', '--subname', help='list only records for the given subname')
+    p = action.add_parser("get-records", help="list all records of a domain")
+    p.add_argument("domain", help="domain name")
+    p.add_argument(
+        "-t",
+        "--type",
+        choices=record_types,
+        metavar="TYPE",
+        help="list only records of the given type",
+    )
+    p.add_argument("-s", "--subname", help="list only records for the given subname")
 
-    p = action.add_parser('add-record', help='add a record set to the domain')
-    p.add_argument('domain', help='domain name')
-    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE', required=True,
-        help='record type to add')
-    p.add_argument('-s', '--subname', default='',
-        help='subname to add, omit to add a record to the zone apex')
-    p.add_argument('-r', '--records', required=True, nargs='+', metavar='RECORD',
-        help='the DNS record(s) to add')
-    p.add_argument('--ttl', type=int, default=3600,
-        help='set the record\'s TTL (default: %(default)i seconds)')
+    p = action.add_parser("add-record", help="add a record set to the domain")
+    p.add_argument("domain", help="domain name")
+    p.add_argument(
+        "-t",
+        "--type",
+        choices=record_types,
+        metavar="TYPE",
+        required=True,
+        help="record type to add",
+    )
+    p.add_argument(
+        "-s", "--subname", default="", help="subname to add, omit to add a record to the zone apex"
+    )
+    p.add_argument(
+        "-r",
+        "--records",
+        required=True,
+        nargs="+",
+        metavar="RECORD",
+        help="the DNS record(s) to add",
+    )
+    p.add_argument(
+        "--ttl", type=int, default=3600, help="set the record's TTL (default: %(default)i seconds)"
+    )
 
-    p = action.add_parser('change-record', help='change an existing record set')
-    p.add_argument('domain', help='domain name')
-    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE', required=True,
-        help='record type to change')
-    p.add_argument('-s', '--subname', default='',
-        help='subname to change, omit to change a record in the zone apex')
-    p.add_argument('-r', '--records', nargs='+', metavar='RECORD', help='the new DNS record(s)')
-    p.add_argument('--ttl', type=int, help='the new TTL')
+    p = action.add_parser("change-record", help="change an existing record set")
+    p.add_argument("domain", help="domain name")
+    p.add_argument(
+        "-t",
+        "--type",
+        choices=record_types,
+        metavar="TYPE",
+        required=True,
+        help="record type to change",
+    )
+    p.add_argument(
+        "-s",
+        "--subname",
+        default="",
+        help="subname to change, omit to change a record in the zone apex",
+    )
+    p.add_argument("-r", "--records", nargs="+", metavar="RECORD", help="the new DNS record(s)")
+    p.add_argument("--ttl", type=int, help="the new TTL")
 
-    p = action.add_parser('delete-record', help='delete a record set')
-    p.add_argument('domain', help='domain name')
-    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE', required=True,
-        help='record type to delete')
-    p.add_argument('-s', '--subname', default='',
-        help='subname to delete, omit to delete a record from the zone apex')
-    p.add_argument('-r', '--records', nargs='+', metavar='RECORD',
-        help='the DNS records to delete (default: all)')
+    p = action.add_parser("delete-record", help="delete a record set")
+    p.add_argument("domain", help="domain name")
+    p.add_argument(
+        "-t",
+        "--type",
+        choices=record_types,
+        metavar="TYPE",
+        required=True,
+        help="record type to delete",
+    )
+    p.add_argument(
+        "-s",
+        "--subname",
+        default="",
+        help="subname to delete, omit to delete a record from the zone apex",
+    )
+    p.add_argument(
+        "-r",
+        "--records",
+        nargs="+",
+        metavar="RECORD",
+        help="the DNS records to delete (default: all)",
+    )
 
-    p = action.add_parser('update-record',
-        help='add entries, possibly to an existing record set')
-    p.add_argument('domain', help='domain name')
-    p.add_argument('-t', '--type', choices=record_types, metavar='TYPE', required=True,
-        help='record type to add')
-    p.add_argument('-s', '--subname', default='',
-        help='subname to add, omit to add a record to the zone apex')
-    p.add_argument('-r', '--records', nargs='+', required=True, metavar='RECORD',
-        help='the DNS records to add')
-    p.add_argument('--ttl', type=int, default=3600,
-        help='set the record\'s TTL, if creating a new record set (default: %(default)i seconds)')
+    p = action.add_parser("update-record", help="add entries, possibly to an existing record set")
+    p.add_argument("domain", help="domain name")
+    p.add_argument(
+        "-t",
+        "--type",
+        choices=record_types,
+        metavar="TYPE",
+        required=True,
+        help="record type to add",
+    )
+    p.add_argument(
+        "-s", "--subname", default="", help="subname to add, omit to add a record to the zone apex"
+    )
+    p.add_argument(
+        "-r",
+        "--records",
+        nargs="+",
+        required=True,
+        metavar="RECORD",
+        help="the DNS records to add",
+    )
+    p.add_argument(
+        "--ttl",
+        type=int,
+        default=3600,
+        help="set the record's TTL, if creating a new record set (default: %(default)i seconds)",
+    )
 
     if cryptography_available:
-        p = action.add_parser('add-tlsa',
-            help='add a TLSA record for a X.509 certificate (aka DANE), keeping any existing '
-                 'records')
-        p.add_argument('domain', help='domain name')
-        p.add_argument('-s', '--subname', default='',
-            help='subname that the record is valid for, omit to set a record to the zone apex')
-        p.add_argument('-p', '--ports', nargs='+', required=True,
-            help='ports that use the certificate')
-        p.add_argument('--protocol', choices=['tcp', 'udp', 'sctp'], default='tcp',
-            help='protocol that the given ports use (default: %(default)s)')
-        p.add_argument('-c', '--certificate', required=True,
-            help='file name of the X.509 certificate for which to set TLSA records (DER or PEM '
-                 'format)')
-        p.add_argument('--usage', type=TLSAUsage, default=TLSAUsage('DANE-EE'),
-            choices=['PKIX-TA', 'PKIX-EE', 'DANE-TA', 'DANE-EE'],
-            help='TLSA certificate usage information. Accepts numeric values or RFC 7218 symbolic '
-                 'names (default: %(default)s)')
-        p.add_argument('--selector', type=TLSASelector, default=TLSASelector('Cert'),
-            choices=['Cert', 'SPKI'],
-            help='TLSA selector. Accepts numeric values or RFC 7218 symbolic names '
-                 '(default: %(default)s)')
-        p.add_argument('--match-type', type=TLSAMatchType, default=TLSAMatchType('SHA2-256'),
-            choices=['Full', 'SHA2-256', 'SHA2-512'],
-            help='TLSA matching type. Accepts numeric values or RFC 7218 symbolic names '
-                 '(default: %(default)s)')
-        p.add_argument('--ttl', type=int, default=3600,
-            help='set the record\'s TTL, if creating a new record set '
-                 '(default: %(default)i seconds)')
-        p.add_argument('--no-check', action='store_false', dest='check', default=True,
-            help='skip any sanity checks and set the TLSA record as specified')
+        p = action.add_parser(
+            "add-tlsa",
+            help="add a TLSA record for a X.509 certificate (aka DANE), keeping any existing "
+            "records",
+        )
+        p.add_argument("domain", help="domain name")
+        p.add_argument(
+            "-s",
+            "--subname",
+            default="",
+            help="subname that the record is valid for, omit to set a record to the zone apex",
+        )
+        p.add_argument(
+            "-p", "--ports", nargs="+", required=True, help="ports that use the certificate"
+        )
+        p.add_argument(
+            "--protocol",
+            choices=["tcp", "udp", "sctp"],
+            default="tcp",
+            help="protocol that the given ports use (default: %(default)s)",
+        )
+        p.add_argument(
+            "-c",
+            "--certificate",
+            required=True,
+            help="file name of the X.509 certificate for which to set TLSA records (DER or PEM "
+            "format)",
+        )
+        p.add_argument(
+            "--usage",
+            type=TLSAUsage,
+            default=TLSAUsage("DANE-EE"),
+            choices=["PKIX-TA", "PKIX-EE", "DANE-TA", "DANE-EE"],
+            help="TLSA certificate usage information. Accepts numeric values or RFC 7218 symbolic "
+            "names (default: %(default)s)",
+        )
+        p.add_argument(
+            "--selector",
+            type=TLSASelector,
+            default=TLSASelector("Cert"),
+            choices=["Cert", "SPKI"],
+            help="TLSA selector. Accepts numeric values or RFC 7218 symbolic names "
+            "(default: %(default)s)",
+        )
+        p.add_argument(
+            "--match-type",
+            type=TLSAMatchType,
+            default=TLSAMatchType("SHA2-256"),
+            choices=["Full", "SHA2-256", "SHA2-512"],
+            help="TLSA matching type. Accepts numeric values or RFC 7218 symbolic names "
+            "(default: %(default)s)",
+        )
+        p.add_argument(
+            "--ttl",
+            type=int,
+            default=3600,
+            help="set the record's TTL, if creating a new record set "
+            "(default: %(default)i seconds)",
+        )
+        p.add_argument(
+            "--no-check",
+            action="store_false",
+            dest="check",
+            default=True,
+            help="skip any sanity checks and set the TLSA record as specified",
+        )
 
-        p = action.add_parser('set-tlsa',
-            help='set the TLSA record for a X.509 certificate (aka DANE), removing any existing '
-                 'records for the same port, protocol and subname')
-        p.add_argument('domain', help='domain name')
-        p.add_argument('-s', '--subname', default='',
-            help='subname that the record is valid for, omit to set a record to the zone apex')
-        p.add_argument('-p', '--ports', nargs='+', required=True,
-            help='ports that use the certificate')
-        p.add_argument('--protocol', choices=['tcp', 'udp', 'sctp'], default='tcp',
-            help='protocol that the given ports use (default: %(default)s)')
-        p.add_argument('-c', '--certificate', required=True,
-            help='file name of the X.509 certificate for which to set TLSA records (DER or PEM '
-                 'format)')
-        p.add_argument('--usage', type=TLSAUsage, default=TLSAUsage('DANE-EE'),
-            choices=['PKIX-TA', 'PKIX-EE', 'DANE-TA', 'DANE-EE'],
-            help='TLSA certificate usage information. Accepts numeric values or RFC 7218 symbolic '
-                 'names (default: %(default)s)')
-        p.add_argument('--selector', type=TLSASelector, default=TLSASelector('Cert'),
-            choices=['Cert', 'SPKI'],
-            help='TLSA selector. Accepts numeric values or RFC 7218 symbolic names '
-                 '(default: %(default)s)')
-        p.add_argument('--match-type', type=TLSAMatchType, default=TLSAMatchType('SHA2-256'),
-            choices=['Full', 'SHA2-256', 'SHA2-512'],
-            help='TLSA matching type. Accepts numeric values or RFC 7218 symbolic names '
-                 '(default: %(default)s)')
-        p.add_argument('--ttl', type=int, default=3600,
-            help='set the record\'s TTL, if creating a new record set '
-                 '(default: %(default)i seconds)')
-        p.add_argument('--no-check', action='store_false', dest='check', default=True,
-            help='skip any sanity checks and set the TLSA record as specified')
+        p = action.add_parser(
+            "set-tlsa",
+            help="set the TLSA record for a X.509 certificate (aka DANE), removing any existing "
+            "records for the same port, protocol and subname",
+        )
+        p.add_argument("domain", help="domain name")
+        p.add_argument(
+            "-s",
+            "--subname",
+            default="",
+            help="subname that the record is valid for, omit to set a record to the zone apex",
+        )
+        p.add_argument(
+            "-p", "--ports", nargs="+", required=True, help="ports that use the certificate"
+        )
+        p.add_argument(
+            "--protocol",
+            choices=["tcp", "udp", "sctp"],
+            default="tcp",
+            help="protocol that the given ports use (default: %(default)s)",
+        )
+        p.add_argument(
+            "-c",
+            "--certificate",
+            required=True,
+            help="file name of the X.509 certificate for which to set TLSA records (DER or PEM "
+            "format)",
+        )
+        p.add_argument(
+            "--usage",
+            type=TLSAUsage,
+            default=TLSAUsage("DANE-EE"),
+            choices=["PKIX-TA", "PKIX-EE", "DANE-TA", "DANE-EE"],
+            help="TLSA certificate usage information. Accepts numeric values or RFC 7218 symbolic "
+            "names (default: %(default)s)",
+        )
+        p.add_argument(
+            "--selector",
+            type=TLSASelector,
+            default=TLSASelector("Cert"),
+            choices=["Cert", "SPKI"],
+            help="TLSA selector. Accepts numeric values or RFC 7218 symbolic names "
+            "(default: %(default)s)",
+        )
+        p.add_argument(
+            "--match-type",
+            type=TLSAMatchType,
+            default=TLSAMatchType("SHA2-256"),
+            choices=["Full", "SHA2-256", "SHA2-512"],
+            help="TLSA matching type. Accepts numeric values or RFC 7218 symbolic names "
+            "(default: %(default)s)",
+        )
+        p.add_argument(
+            "--ttl",
+            type=int,
+            default=3600,
+            help="set the record's TTL, if creating a new record set "
+            "(default: %(default)i seconds)",
+        )
+        p.add_argument(
+            "--no-check",
+            action="store_false",
+            dest="check",
+            default=True,
+            help="skip any sanity checks and set the TLSA record as specified",
+        )
 
-    p = action.add_parser('export', help='export all records into a file')
-    p.add_argument('domain', help='domain name')
-    p.add_argument('-f', '--file', required=True, help='target file name')
+    p = action.add_parser("export", help="export all records into a file")
+    p.add_argument("domain", help="domain name")
+    p.add_argument("-f", "--file", required=True, help="target file name")
 
-    p = action.add_parser('export-zone', help='export all records into a zone file')
-    p.add_argument('domain', help='domain name')
-    p.add_argument('-f', '--file', required=True, help='target file name')
+    p = action.add_parser("export-zone", help="export all records into a zone file")
+    p.add_argument("domain", help="domain name")
+    p.add_argument("-f", "--file", required=True, help="target file name")
 
-    p = action.add_parser('import', help='import records from a file')
-    p.add_argument('domain', help='domain name')
-    p.add_argument('-f', '--file', required=True, help='target file name')
-    p.add_argument('--clear', action='store_true',
-                   help='remove all existing records before import')
+    p = action.add_parser("import", help="import records from a file")
+    p.add_argument("domain", help="domain name")
+    p.add_argument("-f", "--file", required=True, help="target file name")
+    p.add_argument(
+        "--clear", action="store_true", help="remove all existing records before import"
+    )
 
     if dnspython_available:
-        p = action.add_parser('import-zone', help='import records from a zone file')
-        p.add_argument('domain', help='domain name')
-        p.add_argument('-f', '--file', required=True, help='target file name')
-        p.add_argument('--clear', action='store_true',
-                    help='remove all existing records before import')
-        p.add_argument('-d', '--dry-run', action='store_true',
-                    help='just parse zone data, but do not write it to the API')
+        p = action.add_parser("import-zone", help="import records from a zone file")
+        p.add_argument("domain", help="domain name")
+        p.add_argument("-f", "--file", required=True, help="target file name")
+        p.add_argument(
+            "--clear", action="store_true", help="remove all existing records before import"
+        )
+        p.add_argument(
+            "-d",
+            "--dry-run",
+            action="store_true",
+            help="just parse zone data, but do not write it to the API",
+        )
 
     arguments = parser.parse_args()
     del action, token, perm_manage_tokens, perm_write, p, parser
@@ -1091,7 +1332,7 @@ def main():
     if arguments.token:
         token = arguments.token
     else:
-        with open(arguments.token_file, 'r') as f:
+        with open(arguments.token_file, "r") as f:
             token = f.readline().strip()
     if arguments.block:
         api_client = APIClient(token)
@@ -1100,144 +1341,160 @@ def main():
     del token
 
     try:
-
-        if arguments.action == 'list-tokens':
-
+        if arguments.action == "list-tokens":
             tokens = api_client.list_tokens()
             pprint(tokens)
 
-        elif arguments.action == 'create-token':
-
+        elif arguments.action == "create-token":
             data = api_client.create_token(arguments.name, arguments.manage_tokens)
-            print(data['token'])
+            print(data["token"])
 
-        elif arguments.action == 'modify-token':
-
+        elif arguments.action == "modify-token":
             data = api_client.modify_token(arguments.id, arguments.name, arguments.manage_tokens)
             pprint(data)
 
-        elif arguments.action == 'delete-token':
-
+        elif arguments.action == "delete-token":
             data = api_client.delete_token(arguments.id)
 
-        elif arguments.action == 'list-token-policies':
-
+        elif arguments.action == "list-token-policies":
             policies = api_client.list_token_policies(arguments.id)
             pprint(policies)
 
-        elif arguments.action == 'add-token-policy':
-
-            policy = api_client.add_token_policy(arguments.id, arguments.domain, arguments.subname,
-                                                 arguments.type, arguments.write)
+        elif arguments.action == "add-token-policy":
+            policy = api_client.add_token_policy(
+                arguments.id, arguments.domain, arguments.subname, arguments.type, arguments.write
+            )
             pprint(policy)
 
-        elif arguments.action == 'modify-token-policy':
-
-            policy = api_client.modify_token_policy(arguments.token_id, arguments.policy_id,
-                                                    arguments.domain, arguments.subname,
-                                                    arguments.type, arguments.write)
+        elif arguments.action == "modify-token-policy":
+            policy = api_client.modify_token_policy(
+                arguments.token_id,
+                arguments.policy_id,
+                arguments.domain,
+                arguments.subname,
+                arguments.type,
+                arguments.write,
+            )
             pprint(policy)
 
-        elif arguments.action == 'delete-token-policy':
-
+        elif arguments.action == "delete-token-policy":
             api_client.delete_token_policy(arguments.token_id, arguments.policy_id)
 
-        elif arguments.action == 'list-domains':
-
+        elif arguments.action == "list-domains":
             domains = api_client.list_domains()
             for d in domains:
                 print(d)
 
-        elif arguments.action == 'domain-info':
-
+        elif arguments.action == "domain-info":
             data = api_client.domain_info(arguments.domain)
             pprint(data)
 
-        elif arguments.action == 'new-domain':
-
+        elif arguments.action == "new-domain":
             data = api_client.new_domain(arguments.domain)
             pprint(data)
 
-        elif arguments.action == 'delete-domain':
-
+        elif arguments.action == "delete-domain":
             api_client.delete_domain(arguments.domain)
 
-        elif arguments.action == 'get-records':
-
+        elif arguments.action == "get-records":
             data = api_client.get_records(arguments.domain, arguments.type, arguments.subname)
             for rrset in data:
                 print_records(rrset)
 
-        elif arguments.action == 'add-record':
-
-            arguments.records = sanitize_records(arguments.type, arguments.subname,
-                                                 arguments.records)
-            data = api_client.add_record(arguments.domain, arguments.type, arguments.subname,
-                                         arguments.records, arguments.ttl)
+        elif arguments.action == "add-record":
+            arguments.records = sanitize_records(
+                arguments.type, arguments.subname, arguments.records
+            )
+            data = api_client.add_record(
+                arguments.domain,
+                arguments.type,
+                arguments.subname,
+                arguments.records,
+                arguments.ttl,
+            )
             print_records(data)
 
-        elif arguments.action == 'change-record':
-
-            arguments.records = sanitize_records(arguments.type, arguments.subname,
-                                                 arguments.records)
-            data = api_client.change_record(arguments.domain, arguments.type, arguments.subname,
-                                            arguments.records, arguments.ttl)
+        elif arguments.action == "change-record":
+            arguments.records = sanitize_records(
+                arguments.type, arguments.subname, arguments.records
+            )
+            data = api_client.change_record(
+                arguments.domain,
+                arguments.type,
+                arguments.subname,
+                arguments.records,
+                arguments.ttl,
+            )
             print_records(data)
 
-        elif arguments.action == 'update-record':
-
-            arguments.records = sanitize_records(arguments.type, arguments.subname,
-                                                 arguments.records)
-            data = api_client.update_record(arguments.domain, arguments.type, arguments.subname,
-                                            arguments.records, arguments.ttl)
+        elif arguments.action == "update-record":
+            arguments.records = sanitize_records(
+                arguments.type, arguments.subname, arguments.records
+            )
+            data = api_client.update_record(
+                arguments.domain,
+                arguments.type,
+                arguments.subname,
+                arguments.records,
+                arguments.ttl,
+            )
             print_records(data)
 
-        elif arguments.action == 'delete-record':
-
+        elif arguments.action == "delete-record":
             if arguments.records:
-                arguments.records = sanitize_records(arguments.type, arguments.subname,
-                                                     arguments.records)
-            api_client.delete_record(arguments.domain, arguments.type, arguments.subname,
-                                     arguments.records)
+                arguments.records = sanitize_records(
+                    arguments.type, arguments.subname, arguments.records
+                )
+            api_client.delete_record(
+                arguments.domain, arguments.type, arguments.subname, arguments.records
+            )
 
-        elif arguments.action == 'add-tlsa' or arguments.action == 'set-tlsa':
-
-            record = tlsa_record(arguments.certificate, arguments.usage, arguments.selector,
-                                 arguments.match_type, arguments.check, arguments.subname,
-                                 arguments.domain)
+        elif arguments.action == "add-tlsa" or arguments.action == "set-tlsa":
+            record = tlsa_record(
+                arguments.certificate,
+                arguments.usage,
+                arguments.selector,
+                arguments.match_type,
+                arguments.check,
+                arguments.subname,
+                arguments.domain,
+            )
 
             records = []
             for port in arguments.ports:
-                subname = f'_{port}._{arguments.protocol}.{arguments.subname}'
-                if arguments.action == 'add-tlsa':
-                    existing_rrset = api_client.get_records(arguments.domain, 'TLSA', subname)
+                subname = f"_{port}._{arguments.protocol}.{arguments.subname}"
+                if arguments.action == "add-tlsa":
+                    existing_rrset = api_client.get_records(arguments.domain, "TLSA", subname)
                     if existing_rrset:
-                        existing_rrset = existing_rrset[0]['records']
+                        existing_rrset = existing_rrset[0]["records"]
                 else:
                     existing_rrset = []
-                records.append({'type': 'TLSA', 'subname': subname,
-                                'records': existing_rrset + [record], 'ttl': arguments.ttl})
+                records.append(
+                    {
+                        "type": "TLSA",
+                        "subname": subname,
+                        "records": existing_rrset + [record],
+                        "ttl": arguments.ttl,
+                    }
+                )
 
             data = api_client.update_bulk_record(arguments.domain, records)
             print_rrsets(data)
 
-        elif arguments.action == 'export':
-
+        elif arguments.action == "export":
             data = api_client.get_records(arguments.domain)
             # Write the data to the export file in json format
-            with open(arguments.file, 'w') as f:
+            with open(arguments.file, "w") as f:
                 json.dump(data, f)
 
-        elif arguments.action == 'export-zone':
-
+        elif arguments.action == "export-zone":
             data = api_client.export_zonefile_domain(arguments.domain)
             # Write the data to the export file in zonefile format
-            with open(arguments.file, 'w') as f:
+            with open(arguments.file, "w") as f:
                 f.write(data)
 
-        elif arguments.action == 'import':
-
-            with open(arguments.file, 'r') as f:
+        elif arguments.action == "import":
+            with open(arguments.file, "r") as f:
                 records = json.load(f)
             # Create the domain if it does not exist.
             try:
@@ -1248,27 +1505,32 @@ def main():
             data = api_client.update_bulk_record(arguments.domain, records, arguments.clear)
             print_rrsets(data)
 
-        elif arguments.action == 'import-zone':
-
-            record_list = parse_zone_file(arguments.file, arguments.domain,
-                                          api_client.domain_info(arguments.domain)['minimum_ttl'])
+        elif arguments.action == "import-zone":
+            record_list = parse_zone_file(
+                arguments.file,
+                arguments.domain,
+                api_client.domain_info(arguments.domain)["minimum_ttl"],
+            )
             for entry in record_list:
-                if 'error_msg' in entry:
-                    action = 'Corrected' if entry['error_recovered'] else 'Skipped'
+                if "error_msg" in entry:
+                    action = "Corrected" if entry["error_recovered"] else "Skipped"
                     print(f"{entry['error_msg']} {action}.", file=sys.stderr)
             record_list = clear_errors_from_record_list(record_list)
 
             if arguments.dry_run:
-                print("Dry run. Not writing changes to API. I would have written this:",
-                      file=sys.stderr)
+                print(
+                    "Dry run. Not writing changes to API. I would have written this:",
+                    file=sys.stderr,
+                )
                 print_rrsets(record_list)
             else:
-                data = api_client.update_bulk_record(arguments.domain, record_list,
-                                                     arguments.clear)
+                data = api_client.update_bulk_record(
+                    arguments.domain, record_list, arguments.clear
+                )
                 print_rrsets(data)
 
     except AuthenticationError as e:
-        print('Invalid token.')
+        print("Invalid token.")
         sys.exit(e.error_code)
     except APIError as e:
         print(str(e))
