@@ -548,7 +548,7 @@ class APIClient(object):
         url = f'{api_base_url}/domains/{domain}/rrsets/'
 
         if exclusive:
-            # Delete all records not in rrset_list by adding RRsets with empty an 'records'
+            # Delete all records not in rrset_list by adding RRsets with an empty 'records'
             # field for them.
             existing_records = [(r['subname'], r['type']) for r in rrset_list]
             for r in self.get_records(domain):
