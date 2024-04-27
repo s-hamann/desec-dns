@@ -662,7 +662,7 @@ class APIClient(object):
 def print_records(rrset, **kwargs):
     """Print a RRset
 
-    :record: the RRset to print
+    :rrset: the RRset to print
     :**kwargs: additional keyword arguments to print()
     :returns: nothing
 
