@@ -2,12 +2,15 @@
 # vim: encoding=utf-8
 """Simple API client for desec.io"""
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
 import re
 import sys
 import time
+import typing as t
 from datetime import datetime
 from enum import IntEnum
 from hashlib import sha256, sha512
@@ -33,9 +36,10 @@ try:
 except ModuleNotFoundError:
     dnspython_available = False
 
+if t.TYPE_CHECKING:
+    import pathlib
 
-api_base_url = "https://desec.io/api/v1"
-record_types = (
+DnsRecordTypeType = t.Literal[
     "A",
     "AAAA",
     "AFSDB",
@@ -70,7 +74,102 @@ record_types = (
     "TLSA",
     "TXT",
     "URI",
+]
+JsonGenericType = (
+    None
+    | int
+    | float
+    | str
+    | bool
+    | t.Sequence["JsonGenericType"]
+    | t.Mapping[str, "JsonGenericType"]
 )
+
+
+class JsonTokenType(t.TypedDict):
+    """API token information."""
+
+    allowed_subnets: list[str]
+    created: str
+    id: str
+    is_valid: bool
+    last_used: str | None
+    max_age: str | None
+    max_unused_period: str | None
+    name: str
+    perm_manage_tokens: bool
+
+
+class JsonTokenSecretType(JsonTokenType):
+    """API token information including the secret token value."""
+
+    token: str
+
+
+class JsonTokenPolicyType(t.TypedDict):
+    """API token policy information."""
+
+    id: str
+    domain: str | None
+    subname: str | None
+    type: str | None
+    perm_write: bool
+
+
+class JsonDNSSECKeyInfoType(t.TypedDict):
+    """DNSSEC public key information."""
+
+    dnskey: str
+    ds: list[str]
+    flags: int
+    keytype: str
+    managed: bool
+
+
+class JsonDomainType(t.TypedDict):
+    """Domain information."""
+
+    created: str
+    minimum_ttl: int
+    name: str
+    published: str
+    touched: str
+
+
+class JsonDomainWithKeysType(JsonDomainType):
+    """Domain information including DNSSEC public key information."""
+
+    keys: list[JsonDNSSECKeyInfoType]
+
+
+class JsonRRsetWritableType(t.TypedDict):
+    """Writable fields of RRset information."""
+
+    records: list[str]
+    subname: str
+    ttl: t.NotRequired[int]
+    type: DnsRecordTypeType
+
+
+class JsonRRsetType(JsonRRsetWritableType):
+    """RRset information."""
+
+    created: str
+    domain: str
+    name: str
+    touched: str
+
+
+class JsonRRsetFromZonefileType(JsonRRsetWritableType):
+    """RRset information parsed from a zone file."""
+
+    name: str
+    error_msg: t.NotRequired[str]
+    error_recovered: t.NotRequired[bool]
+
+
+api_base_url = "https://desec.io/api/v1"
+record_types = t.get_args(DnsRecordTypeType)
 
 
 class ExitCode(IntEnum):
@@ -124,10 +223,10 @@ class RateLimitError(APIError):
 class TokenAuth(requests.auth.AuthBase):
     """Token-based authentication for requests"""
 
-    def __init__(self, token):
+    def __init__(self, token: str):
         self.token = token
 
-    def __call__(self, r):
+    def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
         r.headers["Authorization"] = f"Token {self.token}"
         return r
 
@@ -136,7 +235,9 @@ class TLSAField:
     """Abstract class for TLSA fields that handles numeric values and symbolic names
     interchangably"""
 
-    def __init__(self, value):
+    valid_values: list[str]
+
+    def __init__(self, value: str | int):
         try:
             value = self.valid_values.index(str(value).upper())
         except ValueError:
@@ -147,18 +248,19 @@ class TLSAField:
         except IndexError as ex:
             raise ValueError(f"Invalid type {value} for {self.__class__}") from ex
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, int):
             return self._value == other
         elif isinstance(other, str):
             return self.valid_values[self._value] == other.upper()
-        else:
+        elif isinstance(other, self.__class__):
             return self._value == other._value
+        return False
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.valid_values[self._value]
 
-    def __int__(self):
+    def __int__(self) -> int:
         return self._value
 
 
@@ -183,7 +285,7 @@ class TLSAMatchType(TLSAField):
 class APIClient:
     """deSEC.io API client"""
 
-    def __init__(self, token, retry_limit=3):
+    def __init__(self, token: str, retry_limit: int = 3):
         """
         :token: API authorization token
         :retry_limit: Number of retries when hitting the API's rate limit. Set to 0 to disable.
@@ -191,7 +293,25 @@ class APIClient:
         self._token_auth = TokenAuth(token)
         self._retry_limit = retry_limit
 
-    def query(self, method, url, data=None):
+    @t.overload
+    def query(
+        self,
+        method: t.Literal["DELETE", "GET"],
+        url: str,
+        data: t.Mapping[str, str | int | float | bool | None] | None = None,
+    ) -> tuple[int, requests.structures.CaseInsensitiveDict[str], JsonGenericType]: ...
+
+    @t.overload
+    def query(
+        self, method: t.Literal["PATCH", "POST", "PUT"], url: str, data: JsonGenericType = None
+    ) -> tuple[int, requests.structures.CaseInsensitiveDict[str], JsonGenericType]: ...
+
+    def query(
+        self,
+        method: t.Literal["DELETE", "GET", "PATCH", "POST", "PUT"],
+        url: str,
+        data: JsonGenericType = None,
+    ) -> tuple[int, requests.structures.CaseInsensitiveDict[str], JsonGenericType]:
         """Query the API
 
         :method: HTTP method to use
@@ -201,7 +321,7 @@ class APIClient:
 
         """
         if method == "GET" or method == "DELETE":
-            params = data
+            params = t.cast(t.Mapping[str, str | int | float | bool | None] | None, data)
             body = None
         else:
             params = None
@@ -223,12 +343,12 @@ class APIClient:
                 retry_after = int(r.headers["Retry-After"])
             except (KeyError, ValueError) as e:
                 # Retry-After header is missing or not an integer. This should never happen.
-                raise RateLimitError(r.json()["detail"] + "\n" + e.message)
+                raise RateLimitError(r.json()["detail"]) from e
         else:
             # Reached retry_limit (or it is 0) without any other response than 429.
-            raise RateLimitError(r.json()["detail"])
+            raise RateLimitError(r.json()["detail"])  # type: ignore[possibly-undefined]
 
-        if r.status_code == 401:
+        if r.status_code == 401:  # type: ignore[possibly-undefined]
             raise AuthenticationError()
 
         # Get Header: Content-Type
@@ -238,6 +358,7 @@ class APIClient:
             content_type = None
 
         # Process response data according content-type
+        response_data: JsonGenericType
         if content_type == "text/dns":
             response_data = r.text
         elif content_type == "application/json":
@@ -249,7 +370,7 @@ class APIClient:
             response_data = None
         return (r.status_code, r.headers, response_data)
 
-    def parse_links(self, links):
+    def parse_links(self, links: str) -> dict[str, str]:
         """Parse `Link:` response header used for pagination
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#pagination
 
@@ -260,13 +381,16 @@ class APIClient:
         mapping = {}
         for link in links.split(", "):
             _url, label = link.split("; ")
-            label = re.search('rel="(.*)"', label).group(1)
+            m = re.search('rel="(.*)"', label)
+            if m is None:
+                raise APIError("Unexpected format in Link header")
+            label = m.group(1)
             _url = _url[1:-1]
             assert label not in mapping
             mapping[label] = _url
         return mapping
 
-    def list_tokens(self):
+    def list_tokens(self) -> list[JsonTokenType]:
         """Return a list of all tokens
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#retrieving-all-current-tokens
 
@@ -276,13 +400,15 @@ class APIClient:
         url = f"{api_base_url}/auth/tokens/"
         code, _, data = self.query("GET", url)
         if code == 200:
-            return data
+            return t.cast(list[JsonTokenType], data)
         elif code == 403:
             raise APIError("Insufficient permissions to manage tokens")
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def create_token(self, name="", manage_tokens=None):
+    def create_token(
+        self, name: str = "", manage_tokens: bool | None = None
+    ) -> JsonTokenSecretType:
         """Create a new authentication token.
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#create-additional-tokens
 
@@ -292,18 +418,21 @@ class APIClient:
 
         """
         url = f"{api_base_url}/auth/tokens/"
+        request_data: JsonGenericType
         request_data = {"name": name}
         if manage_tokens is not None:
             request_data["perm_manage_tokens"] = manage_tokens
         code, _, data = self.query("POST", url, request_data)
         if code == 201:
-            return data
+            return t.cast(JsonTokenSecretType, data)
         elif code == 403:
             raise APIError("Insufficient permissions to manage tokens")
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def modify_token(self, token_id, name=None, manage_tokens=None):
+    def modify_token(
+        self, token_id: str, name: str | None = None, manage_tokens: bool | None = None
+    ) -> JsonTokenType:
         """Modify an existing authentication token.
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#modifying-a-token
 
@@ -314,6 +443,7 @@ class APIClient:
 
         """
         url = f"{api_base_url}/auth/tokens/{token_id}/"
+        request_data: JsonGenericType
         request_data = {}
         if name is not None:
             request_data["name"] = name
@@ -321,13 +451,13 @@ class APIClient:
             request_data["perm_manage_tokens"] = manage_tokens
         code, _, data = self.query("PATCH", url, request_data)
         if code == 200:
-            return data
+            return t.cast(JsonTokenType, data)
         elif code == 403:
             raise APIError("Insufficient permissions to manage tokens")
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def delete_token(self, token_id):
+    def delete_token(self, token_id: str) -> None:
         """Delete an authentication token
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#delete-tokens
 
@@ -344,7 +474,7 @@ class APIClient:
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def list_token_policies(self, token_id):
+    def list_token_policies(self, token_id: str) -> list[JsonTokenPolicyType]:
         """Return a list of all policies for the given token
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
 
@@ -355,13 +485,20 @@ class APIClient:
         url = f"{api_base_url}/auth/tokens/{token_id}/policies/rrsets/"
         code, _, data = self.query("GET", url)
         if code == 200:
-            return data
+            return t.cast(list[JsonTokenPolicyType], data)
         elif code == 403:
             raise APIError("Insufficient permissions to manage tokens")
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def add_token_policy(self, token_id, domain=None, subname=None, rtype=None, perm_write=False):
+    def add_token_policy(
+        self,
+        token_id: str,
+        domain: str | None = None,
+        subname: str | None = None,
+        rtype: str | None = None,
+        perm_write: bool = False,
+    ) -> JsonTokenPolicyType:
         """Add a policy to the given token
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
 
@@ -374,6 +511,7 @@ class APIClient:
 
         """
         url = f"{api_base_url}/auth/tokens/{token_id}/policies/rrsets/"
+        request_data: JsonGenericType
         request_data = {
             "domain": domain,
             "subname": subname,
@@ -382,7 +520,7 @@ class APIClient:
         }
         code, _, data = self.query("POST", url, request_data)
         if code == 201:
-            return data
+            return t.cast(JsonTokenPolicyType, data)
         elif code == 403:
             raise APIError("Insufficient permissions to manage tokens")
         elif code == 409:
@@ -391,8 +529,14 @@ class APIClient:
             raise APIError(f"Unexpected error code {code}")
 
     def modify_token_policy(
-        self, token_id, policy_id, domain=False, subname=False, rtype=False, perm_write=None
-    ):
+        self,
+        token_id: str,
+        policy_id: str,
+        domain: str | None | t.Literal[False] = False,
+        subname: str | None | t.Literal[False] = False,
+        rtype: str | None | t.Literal[False] = False,
+        perm_write: bool | None = None,
+    ) -> JsonTokenPolicyType:
         """Modify an existing policy for the given token
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
 
@@ -406,6 +550,7 @@ class APIClient:
 
         """
         url = f"{api_base_url}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
+        request_data: JsonGenericType
         request_data = {}
         if domain is not False:
             request_data["domain"] = domain
@@ -417,7 +562,7 @@ class APIClient:
             request_data["perm_write"] = perm_write
         code, _, data = self.query("PATCH", url, request_data)
         if code == 200:
-            return data
+            return t.cast(JsonTokenPolicyType, data)
         elif code == 403:
             raise APIError("Insufficient permissions to manage tokens")
         elif code == 409:
@@ -425,7 +570,7 @@ class APIClient:
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def delete_token_policy(self, token_id, policy_id):
+    def delete_token_policy(self, token_id: str, policy_id: str) -> None:
         """Delete an existing policy for the given token
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
 
@@ -443,7 +588,7 @@ class APIClient:
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def list_domains(self):
+    def list_domains(self) -> list[str]:
         """Return a list of all registered domains
         See https://desec.readthedocs.io/en/latest/dns/domains.html#listing-domains
 
@@ -453,11 +598,11 @@ class APIClient:
         url = f"{api_base_url}/domains/"
         code, _, data = self.query("GET", url)
         if code == 200:
-            return [domain["name"] for domain in data]
+            return [domain["name"] for domain in t.cast(list[JsonDomainType], data)]
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def domain_info(self, domain):
+    def domain_info(self, domain: str) -> JsonDomainWithKeysType:
         """Return basic information about a domain
         See https://desec.readthedocs.io/en/latest/dns/domains.html#retrieving-a-specific-domain
 
@@ -468,13 +613,13 @@ class APIClient:
         url = f"{api_base_url}/domains/{domain}/"
         code, _, data = self.query("GET", url)
         if code == 200:
-            return data
+            return t.cast(JsonDomainWithKeysType, data)
         elif code == 404:
             raise NotFoundError(f"Domain {domain} not found")
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def new_domain(self, domain):
+    def new_domain(self, domain: str) -> JsonDomainWithKeysType:
         """Create a new domain
         See https://desec.readthedocs.io/en/latest/dns/domains.html#creating-a-domain
 
@@ -485,7 +630,7 @@ class APIClient:
         url = f"{api_base_url}/domains/"
         code, _, data = self.query("POST", url, data={"name": domain})
         if code == 201:
-            return data
+            return t.cast(JsonDomainWithKeysType, data)
         elif code == 400:
             raise ParameterError(f"Malformed domain name {domain}")
         elif code == 403:
@@ -495,7 +640,7 @@ class APIClient:
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def delete_domain(self, domain):
+    def delete_domain(self, domain: str) -> None:
         """Delete a domain
         See https://desec.readthedocs.io/en/latest/dns/domains.html#deleting-a-domain
 
@@ -510,7 +655,7 @@ class APIClient:
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def export_zonefile_domain(self, domain):
+    def export_zonefile_domain(self, domain: str) -> str:
         """Export a domain as a zonefile
         See https://desec.readthedocs.io/en/latest/dns/domains.html#exporting-a-domain-as-zonefile
 
@@ -521,13 +666,15 @@ class APIClient:
         url = f"{api_base_url}/domains/{domain}/zonefile/"
         code, _, data = self.query("GET", url)
         if code == 200:
-            return data
+            return t.cast(str, data)
         elif code == 404:
             raise NotFoundError(f"Domain {domain} not found")
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def get_records(self, domain, rtype=None, subname=None):
+    def get_records(
+        self, domain: str, rtype: DnsRecordTypeType | None = None, subname: str | None = None
+    ) -> list[JsonRRsetType]:
         """Return all records of a domain, possibly restricted to records of type `rtype` and
         subname `subname`
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#retrieving-all-rrsets-in-a-zone
@@ -538,17 +685,19 @@ class APIClient:
         :returns: list of dicts representing RRsets
 
         """
+        url: str | None
         url = f"{api_base_url}/domains/{domain}/rrsets/"
         code, headers, data = self.query("GET", url, {"subname": subname, "type": rtype})
         if code == 200:
-            return data
+            return t.cast(list[JsonRRsetType], data)
         elif code == 400 and "Link" in headers:
+            result: list[JsonRRsetType]
             result = []
             links = self.parse_links(headers["Link"])
             url = links["first"]
             while url is not None:
                 code, headers, data = self.query("GET", url)
-                result += data
+                result += t.cast(list[JsonRRsetType], data)
                 links = self.parse_links(headers["Link"])
                 url = links.get("next")
             return result
@@ -557,7 +706,9 @@ class APIClient:
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def add_record(self, domain, rtype, subname, rrset, ttl):
+    def add_record(
+        self, domain: str, rtype: DnsRecordTypeType, subname: str, rrset: t.Sequence[str], ttl: int
+    ) -> JsonRRsetType:
         """Add a new RRset. There must not be a RRset for this domain-type-subname combination
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#creating-an-rrset
 
@@ -574,7 +725,7 @@ class APIClient:
             "POST", url, {"subname": subname, "type": rtype, "records": rrset, "ttl": ttl}
         )
         if code == 201:
-            return data
+            return t.cast(JsonRRsetType, data)
         elif code == 404:
             raise NotFoundError(f"Domain {domain} not found")
         elif code == 422:
@@ -584,7 +735,9 @@ class APIClient:
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def update_bulk_record(self, domain, rrset_list, exclusive=False):
+    def update_bulk_record(
+        self, domain: str, rrset_list: t.Sequence[JsonRRsetWritableType], exclusive: bool = False
+    ) -> list[JsonRRsetType]:
         """Update RRsets in bulk.
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#bulk-operations
 
@@ -598,14 +751,15 @@ class APIClient:
             # Delete all records not in rrset_list by adding RRsets with an empty 'records'
             # field for them.
             existing_records = [(r["subname"], r["type"]) for r in rrset_list]
+            rrset_list = list(rrset_list)
             for r in self.get_records(domain):
                 if (r["subname"], r["type"]) not in existing_records:
                     rrset_list.append({"subname": r["subname"], "type": r["type"], "records": []})
 
-        code, _, data = self.query("PATCH", url, rrset_list)
+        code, _, data = self.query("PATCH", url, t.cast(JsonGenericType, rrset_list))
 
         if code == 200:
-            return data
+            return t.cast(list[JsonRRsetType], data)
         elif code == 400:
             raise APIError(f"Could not create RRsets. Errors: {data}")
         elif code == 404:
@@ -613,7 +767,14 @@ class APIClient:
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def change_record(self, domain, rtype, subname, rrset=None, ttl=None):
+    def change_record(
+        self,
+        domain: str,
+        rtype: DnsRecordTypeType,
+        subname: str,
+        rrset: t.Sequence[str] | None = None,
+        ttl: int | None = None,
+    ) -> JsonRRsetType:
         """Change an existing RRset. Existing data is replaced by the provided `rrset` and `ttl`
         (if provided)
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#modifying-an-rrset
@@ -627,6 +788,7 @@ class APIClient:
 
         """
         url = f"{api_base_url}/domains/{domain}/rrsets/{subname}.../{rtype}/"
+        request_data: JsonGenericType
         request_data = {}
         if rrset:
             request_data["records"] = rrset
@@ -634,7 +796,7 @@ class APIClient:
             request_data["ttl"] = ttl
         code, _, data = self.query("PATCH", url, data=request_data)
         if code == 200:
-            return data
+            return t.cast(JsonRRsetType, data)
         elif code == 404:
             raise NotFoundError(f"RRset {rrset} for {rtype} record {subname}.{domain} not found")
         elif code == 400:
@@ -646,7 +808,13 @@ class APIClient:
         else:
             raise APIError(f"Unexpected error code {code}")
 
-    def delete_record(self, domain, rtype, subname, rrset=None):
+    def delete_record(
+        self,
+        domain: str,
+        rtype: DnsRecordTypeType,
+        subname: str,
+        rrset: t.Sequence[str] | None = None,
+    ) -> None:
         """Delete an existing RRset or records from an RRset
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#deleting-an-rrset
 
@@ -676,7 +844,7 @@ class APIClient:
         else:
             # Nothing should be kept, delete the whole RRset
             url = f"{api_base_url}/domains/{domain}/rrsets/{subname}.../{rtype}/"
-            code, _, data = self.query("DELETE", url)
+            code, _, _ = self.query("DELETE", url)
             if code == 204:
                 pass
             elif code == 404:
@@ -684,7 +852,14 @@ class APIClient:
             else:
                 raise APIError(f"Unexpected error code {code}")
 
-    def update_record(self, domain, rtype, subname, rrset, ttl=None):
+    def update_record(
+        self,
+        domain: str,
+        rtype: DnsRecordTypeType,
+        subname: str,
+        rrset: list[str],
+        ttl: int | None = None,
+    ) -> JsonRRsetType:
         """Change an existing RRset or create a new one. Records are added to the existing records
         (if any). `ttl` is used only when creating a new record sets. For existing records sets,
         the existing TTL is kept.
@@ -700,6 +875,8 @@ class APIClient:
         data = self.get_records(domain, rtype, subname)
         if not data:
             # There is no entry, simply create a new one
+            if ttl is None:
+                raise ParameterError(f"Missing TTL for new {rtype} record {subname}.{domain}.")
             return self.add_record(domain, rtype, subname, rrset, ttl)
         else:
             # Update the existing records with the given ones
@@ -707,7 +884,7 @@ class APIClient:
             return self.change_record(domain, rtype, subname, rrset)
 
 
-def print_records(rrset, **kwargs):
+def print_records(rrset: JsonRRsetType | JsonRRsetFromZonefileType, **kwargs: t.Any) -> None:
     """Print a RRset
 
     :rrset: the RRset to print
@@ -720,7 +897,9 @@ def print_records(rrset, **kwargs):
         print(line, **kwargs)
 
 
-def print_rrsets(rrsets, **kwargs):
+def print_rrsets(
+    rrsets: t.Sequence[JsonRRsetType | JsonRRsetFromZonefileType], **kwargs: t.Any
+) -> None:
     """Print multiple RRsets
 
     :rrsets: the RRsets to print
@@ -732,7 +911,7 @@ def print_rrsets(rrsets, **kwargs):
         print_records(rrset, **kwargs)
 
 
-def sanitize_records(rtype, subname, rrset):
+def sanitize_records(rtype: DnsRecordTypeType, subname: str, rrset: list[str]) -> list[str]:
     """Check the given DNS records for common errors and return a copy with fixed data. Raise an
     Exception if not all errors can be fixed.
     See https://desec.readthedocs.io/en/latest/dns/rrsets.html#caveats
@@ -761,7 +940,9 @@ def sanitize_records(rtype, subname, rrset):
     return rrset
 
 
-def parse_zone_file(path, domain, minimum_ttl=3600):
+def parse_zone_file(
+    path: str | pathlib.Path, domain: str, minimum_ttl: int = 3600
+) -> list[JsonRRsetFromZonefileType]:
     """Parse a zone file into a list of rrsets that can be supplied to the API, e.g. using
     update_bulk_record(). The list of rrsets may contain invalid records. It should be passed to
     clear_errors_from_record_list() before passing it to the API.
@@ -778,15 +959,21 @@ def parse_zone_file(path, domain, minimum_ttl=3600):
     parsed_zone = zone.from_file(path, origin=domain, relativize=False, check_origin=False)
 
     # Convert the parsed data into a dictionary and do some error detection.
+    record_list: list[JsonRRsetFromZonefileType]
     record_list = []
-    for subname, rrset in parsed_zone.iterate_rdatasets():
+    for name, rrset in parsed_zone.iterate_rdatasets():
         # Store error information of the current rrset as a dict of a human-readable
         # error message and a boolean indicating whether the error was fixed.
         # Only one error is stored, even if the line has multiple errors.
+        class ErrorInfoType(t.TypedDict):
+            error_msg: str
+            error_recovered: bool
+
+        error: ErrorInfoType | None
         error = None
 
         # Convert subname to string for further processing.
-        subname = subname.relativize(dns.name.from_text(domain)).to_text()
+        subname = name.relativize(dns.name.from_text(domain)).to_text()
 
         # @ may be used for the zone apex in zone files. But we (and the deSEC API) use
         # the empty string instead.
@@ -808,14 +995,15 @@ def parse_zone_file(path, domain, minimum_ttl=3600):
 
         records = [r.to_text() for r in rrset]
         try:
-            records = sanitize_records(rrset.rdtype, subname, records)
+            records = sanitize_records(t.cast(DnsRecordTypeType, rrset.rdtype), subname, records)
         except ParameterError as e:
             error = {"error_msg": str(e), "error_recovered": False}
 
+        entry: JsonRRsetFromZonefileType
         entry = {
             "name": f"{subname}.{domain}.",
             "subname": subname,
-            "type": rdatatype.to_text(rrset.rdtype),
+            "type": t.cast(DnsRecordTypeType, rdatatype.to_text(rrset.rdtype)),
             "records": records,
             "ttl": rrset.ttl,
         }
@@ -826,7 +1014,9 @@ def parse_zone_file(path, domain, minimum_ttl=3600):
     return record_list
 
 
-def clear_errors_from_record_list(record_list):
+def clear_errors_from_record_list(
+    record_list: t.Sequence[JsonRRsetFromZonefileType],
+) -> list[JsonRRsetFromZonefileType]:
     """Remove error information added by parse_zone_file() and all items with
     non-recoverable errors.
 
@@ -846,14 +1036,14 @@ def clear_errors_from_record_list(record_list):
 
 
 def tlsa_record(
-    file,
-    usage=TLSAUsage("DANE-EE"),
-    selector=TLSASelector("Cert"),
-    match_type=TLSAMatchType("SHA2-256"),
-    check=True,
-    subname=None,
-    domain=None,
-):
+    file: str | pathlib.Path,
+    usage: TLSAUsage = TLSAUsage("DANE-EE"),
+    selector: TLSASelector = TLSASelector("Cert"),
+    match_type: TLSAMatchType = TLSAMatchType("SHA2-256"),
+    check: bool = True,
+    subname: str | None = None,
+    domain: str | None = None,
+) -> str:
     """Return the TLSA record for the given certificate, usage, selector and match_type.
     Raise an Exception if the given parameters do not seem to make sense.
 
@@ -921,25 +1111,25 @@ def tlsa_record(
 
     # Encode the data.
     if match_type == "Full":
-        data = data.hex()
+        hex_data = data.hex()
     elif match_type == "SHA2-256":
-        data = sha256(data).hexdigest()
+        hex_data = sha256(data).hexdigest()
     elif match_type == "SHA2-512":
-        data = sha512(data).hexdigest()
+        hex_data = sha512(data).hexdigest()
     else:
         raise NotImplementedError(f"TLSA match type {match_type} is not implemented.")
 
-    return f"{int(usage)} {int(selector)} {int(match_type)} {data}"
+    return f"{int(usage)} {int(selector)} {int(match_type)} {hex_data}"
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="A simple deSEC.io API client")
-    action = parser.add_subparsers(dest="action", metavar="action")
-    action.required = True
+    p_action = parser.add_subparsers(dest="action", metavar="action")
+    p_action.required = True
 
-    token = parser.add_mutually_exclusive_group()
-    token.add_argument("--token", help="API authentication token")
-    token.add_argument(
+    g = parser.add_mutually_exclusive_group()
+    g.add_argument("--token", help="API authentication token")
+    g.add_argument(
         "--token-file",
         default=os.path.join(os.path.expanduser("~"), ".desec_auth_token"),
         help="file containing the API authentication token (default: %(default)s)",
@@ -961,9 +1151,9 @@ def main():
         "This is the default behaviour.",
     )
 
-    p = action.add_parser("list-tokens", help="list all authentication tokens")
+    p = p_action.add_parser("list-tokens", help="list all authentication tokens")
 
-    p = action.add_parser("create-token", help="create and return a new authentication token")
+    p = p_action.add_parser("create-token", help="create and return a new authentication token")
     p.add_argument("--name", default="", help="token name")
     p.add_argument(
         "--manage-tokens",
@@ -972,18 +1162,18 @@ def main():
         help="create a token that can manage tokens",
     )
 
-    p = action.add_parser("modify-token", help="modify an existing authentication token")
+    p = p_action.add_parser("modify-token", help="modify an existing authentication token")
     p.add_argument("id", help="token id")
     p.add_argument("--name", default=None, help="token name")
-    perm_manage_tokens = p.add_mutually_exclusive_group()
-    perm_manage_tokens.add_argument(
+    g = p.add_mutually_exclusive_group()
+    g.add_argument(
         "--manage-tokens",
         dest="manage_tokens",
         action="store_true",
         default=None,
         help="allow this token to manage tokens",
     )
-    perm_manage_tokens.add_argument(
+    g.add_argument(
         "--no-manage-tokens",
         dest="manage_tokens",
         action="store_false",
@@ -991,15 +1181,15 @@ def main():
         help="do not allow this token to manage tokens",
     )
 
-    p = action.add_parser("delete-token", help="delete an authentication token")
+    p = p_action.add_parser("delete-token", help="delete an authentication token")
     p.add_argument("id", help="token id")
 
-    p = action.add_parser(
+    p = p_action.add_parser(
         "list-token-policies", help="list all policies of an authentication token"
     )
     p.add_argument("id", help="token id")
 
-    p = action.add_parser("add-token-policy", help="add a policy for an authentication token")
+    p = p_action.add_parser("add-token-policy", help="add a policy for an authentication token")
     p.add_argument("id", help="token id")
     p.add_argument("--domain", default=None, help="domain to which the policy applies")
     p.add_argument(
@@ -1013,7 +1203,7 @@ def main():
     p.add_argument("-s", "--subname", default=None, help="subname to which the policy applies")
     p.add_argument("--write", action="store_true", default=False, help="allow write access")
 
-    p = action.add_parser(
+    p = p_action.add_parser(
         "modify-token-policy", help="modify an existing policy for an authentication token"
     )
     p.add_argument("token_id", help="token id")
@@ -1029,11 +1219,11 @@ def main():
     )
     p.add_argument("-s", "--subname", default=False, help="subname to which the policy applies")
 
-    perm_write = p.add_mutually_exclusive_group()
-    perm_write.add_argument(
+    g = p.add_mutually_exclusive_group()
+    g.add_argument(
         "--write", dest="write", action="store_true", default=None, help="allow write access"
     )
-    perm_write.add_argument(
+    g.add_argument(
         "--no-write",
         dest="write",
         action="store_false",
@@ -1041,24 +1231,24 @@ def main():
         help="do not allow write access",
     )
 
-    p = action.add_parser(
+    p = p_action.add_parser(
         "delete-token-policy", help="delete an existing policy for an authentication token"
     )
     p.add_argument("token_id", help="token id")
     p.add_argument("policy_id", help="policy id")
 
-    p = action.add_parser("list-domains", help="list all registered domains")
+    p = p_action.add_parser("list-domains", help="list all registered domains")
 
-    p = action.add_parser("domain-info", help="get information about a domain")
+    p = p_action.add_parser("domain-info", help="get information about a domain")
     p.add_argument("domain", help="domain name")
 
-    p = action.add_parser("new-domain", help="create a new domain")
+    p = p_action.add_parser("new-domain", help="create a new domain")
     p.add_argument("domain", help="domain name")
 
-    p = action.add_parser("delete-domain", help="delete a domain")
+    p = p_action.add_parser("delete-domain", help="delete a domain")
     p.add_argument("domain", help="domain name")
 
-    p = action.add_parser("get-records", help="list all records of a domain")
+    p = p_action.add_parser("get-records", help="list all records of a domain")
     p.add_argument("domain", help="domain name")
     p.add_argument(
         "-t",
@@ -1069,7 +1259,7 @@ def main():
     )
     p.add_argument("-s", "--subname", help="list only records for the given subname")
 
-    p = action.add_parser("add-record", help="add a record set to the domain")
+    p = p_action.add_parser("add-record", help="add a record set to the domain")
     p.add_argument("domain", help="domain name")
     p.add_argument(
         "-t",
@@ -1094,7 +1284,7 @@ def main():
         "--ttl", type=int, default=3600, help="set the record's TTL (default: %(default)i seconds)"
     )
 
-    p = action.add_parser("change-record", help="change an existing record set")
+    p = p_action.add_parser("change-record", help="change an existing record set")
     p.add_argument("domain", help="domain name")
     p.add_argument(
         "-t",
@@ -1113,7 +1303,7 @@ def main():
     p.add_argument("-r", "--records", nargs="+", metavar="RECORD", help="the new DNS record(s)")
     p.add_argument("--ttl", type=int, help="the new TTL")
 
-    p = action.add_parser("delete-record", help="delete a record set")
+    p = p_action.add_parser("delete-record", help="delete a record set")
     p.add_argument("domain", help="domain name")
     p.add_argument(
         "-t",
@@ -1137,7 +1327,9 @@ def main():
         help="the DNS records to delete (default: all)",
     )
 
-    p = action.add_parser("update-record", help="add entries, possibly to an existing record set")
+    p = p_action.add_parser(
+        "update-record", help="add entries, possibly to an existing record set"
+    )
     p.add_argument("domain", help="domain name")
     p.add_argument(
         "-t",
@@ -1166,7 +1358,7 @@ def main():
     )
 
     if cryptography_available:
-        p = action.add_parser(
+        p = p_action.add_parser(
             "add-tlsa",
             help="add a TLSA record for a X.509 certificate (aka DANE), keeping any existing "
             "records",
@@ -1198,7 +1390,12 @@ def main():
             "--usage",
             type=TLSAUsage,
             default=TLSAUsage("DANE-EE"),
-            choices=["PKIX-TA", "PKIX-EE", "DANE-TA", "DANE-EE"],
+            choices=[
+                TLSAUsage("PKIX-TA"),
+                TLSAUsage("PKIX-EE"),
+                TLSAUsage("DANE-TA"),
+                TLSAUsage("DANE-EE"),
+            ],
             help="TLSA certificate usage information. Accepts numeric values or RFC 7218 symbolic "
             "names (default: %(default)s)",
         )
@@ -1206,7 +1403,7 @@ def main():
             "--selector",
             type=TLSASelector,
             default=TLSASelector("Cert"),
-            choices=["Cert", "SPKI"],
+            choices=[TLSASelector("Cert"), TLSASelector("SPKI")],
             help="TLSA selector. Accepts numeric values or RFC 7218 symbolic names "
             "(default: %(default)s)",
         )
@@ -1214,7 +1411,7 @@ def main():
             "--match-type",
             type=TLSAMatchType,
             default=TLSAMatchType("SHA2-256"),
-            choices=["Full", "SHA2-256", "SHA2-512"],
+            choices=[TLSAMatchType("Full"), TLSAMatchType("SHA2-256"), TLSAMatchType("SHA2-512")],
             help="TLSA matching type. Accepts numeric values or RFC 7218 symbolic names "
             "(default: %(default)s)",
         )
@@ -1233,7 +1430,7 @@ def main():
             help="skip any sanity checks and set the TLSA record as specified",
         )
 
-        p = action.add_parser(
+        p = p_action.add_parser(
             "set-tlsa",
             help="set the TLSA record for a X.509 certificate (aka DANE), removing any existing "
             "records for the same port, protocol and subname",
@@ -1265,7 +1462,12 @@ def main():
             "--usage",
             type=TLSAUsage,
             default=TLSAUsage("DANE-EE"),
-            choices=["PKIX-TA", "PKIX-EE", "DANE-TA", "DANE-EE"],
+            choices=[
+                TLSAUsage("PKIX-TA"),
+                TLSAUsage("PKIX-EE"),
+                TLSAUsage("DANE-TA"),
+                TLSAUsage("DANE-EE"),
+            ],
             help="TLSA certificate usage information. Accepts numeric values or RFC 7218 symbolic "
             "names (default: %(default)s)",
         )
@@ -1273,7 +1475,7 @@ def main():
             "--selector",
             type=TLSASelector,
             default=TLSASelector("Cert"),
-            choices=["Cert", "SPKI"],
+            choices=[TLSASelector("Cert"), TLSASelector("SPKI")],
             help="TLSA selector. Accepts numeric values or RFC 7218 symbolic names "
             "(default: %(default)s)",
         )
@@ -1281,7 +1483,7 @@ def main():
             "--match-type",
             type=TLSAMatchType,
             default=TLSAMatchType("SHA2-256"),
-            choices=["Full", "SHA2-256", "SHA2-512"],
+            choices=[TLSAMatchType("Full"), TLSAMatchType("SHA2-256"), TLSAMatchType("SHA2-512")],
             help="TLSA matching type. Accepts numeric values or RFC 7218 symbolic names "
             "(default: %(default)s)",
         )
@@ -1300,15 +1502,15 @@ def main():
             help="skip any sanity checks and set the TLSA record as specified",
         )
 
-    p = action.add_parser("export", help="export all records into a file")
+    p = p_action.add_parser("export", help="export all records into a file")
     p.add_argument("domain", help="domain name")
     p.add_argument("-f", "--file", required=True, help="target file name")
 
-    p = action.add_parser("export-zone", help="export all records into a zone file")
+    p = p_action.add_parser("export-zone", help="export all records into a zone file")
     p.add_argument("domain", help="domain name")
     p.add_argument("-f", "--file", required=True, help="target file name")
 
-    p = action.add_parser("import", help="import records from a file")
+    p = p_action.add_parser("import", help="import records from a file")
     p.add_argument("domain", help="domain name")
     p.add_argument("-f", "--file", required=True, help="target file name")
     p.add_argument(
@@ -1316,7 +1518,7 @@ def main():
     )
 
     if dnspython_available:
-        p = action.add_parser("import-zone", help="import records from a zone file")
+        p = p_action.add_parser("import-zone", help="import records from a zone file")
         p.add_argument("domain", help="domain name")
         p.add_argument("-f", "--file", required=True, help="target file name")
         p.add_argument(
@@ -1330,7 +1532,7 @@ def main():
         )
 
     arguments = parser.parse_args()
-    del action, token, perm_manage_tokens, perm_write, p, parser
+    del p_action, g, p, parser
 
     if arguments.token:
         token = arguments.token
@@ -1345,32 +1547,34 @@ def main():
 
     try:
         if arguments.action == "list-tokens":
-            tokens = api_client.list_tokens()
-            pprint(tokens)
+            tokens_result = api_client.list_tokens()
+            pprint(tokens_result)
 
         elif arguments.action == "create-token":
-            data = api_client.create_token(arguments.name, arguments.manage_tokens)
-            print(data["token"])
+            new_token_result = api_client.create_token(arguments.name, arguments.manage_tokens)
+            print(new_token_result["token"])
 
         elif arguments.action == "modify-token":
-            data = api_client.modify_token(arguments.id, arguments.name, arguments.manage_tokens)
-            pprint(data)
+            token_result = api_client.modify_token(
+                arguments.id, arguments.name, arguments.manage_tokens
+            )
+            pprint(token_result)
 
         elif arguments.action == "delete-token":
-            data = api_client.delete_token(arguments.id)
+            api_client.delete_token(arguments.id)
 
         elif arguments.action == "list-token-policies":
-            policies = api_client.list_token_policies(arguments.id)
-            pprint(policies)
+            policies_result = api_client.list_token_policies(arguments.id)
+            pprint(policies_result)
 
         elif arguments.action == "add-token-policy":
-            policy = api_client.add_token_policy(
+            policy_result = api_client.add_token_policy(
                 arguments.id, arguments.domain, arguments.subname, arguments.type, arguments.write
             )
-            pprint(policy)
+            pprint(policy_result)
 
         elif arguments.action == "modify-token-policy":
-            policy = api_client.modify_token_policy(
+            policy_result = api_client.modify_token_policy(
                 arguments.token_id,
                 arguments.policy_id,
                 arguments.domain,
@@ -1378,70 +1582,72 @@ def main():
                 arguments.type,
                 arguments.write,
             )
-            pprint(policy)
+            pprint(policy_result)
 
         elif arguments.action == "delete-token-policy":
             api_client.delete_token_policy(arguments.token_id, arguments.policy_id)
 
         elif arguments.action == "list-domains":
-            domains = api_client.list_domains()
-            for d in domains:
+            domains_result = api_client.list_domains()
+            for d in domains_result:
                 print(d)
 
         elif arguments.action == "domain-info":
-            data = api_client.domain_info(arguments.domain)
-            pprint(data)
+            domain_result = api_client.domain_info(arguments.domain)
+            pprint(domain_result)
 
         elif arguments.action == "new-domain":
-            data = api_client.new_domain(arguments.domain)
-            pprint(data)
+            domain_result = api_client.new_domain(arguments.domain)
+            pprint(domain_result)
 
         elif arguments.action == "delete-domain":
             api_client.delete_domain(arguments.domain)
 
         elif arguments.action == "get-records":
-            data = api_client.get_records(arguments.domain, arguments.type, arguments.subname)
-            for rrset in data:
+            rrsets_result = api_client.get_records(
+                arguments.domain, arguments.type, arguments.subname
+            )
+            for rrset in rrsets_result:
                 print_records(rrset)
 
         elif arguments.action == "add-record":
             arguments.records = sanitize_records(
                 arguments.type, arguments.subname, arguments.records
             )
-            data = api_client.add_record(
+            rrset_result = api_client.add_record(
                 arguments.domain,
                 arguments.type,
                 arguments.subname,
                 arguments.records,
                 arguments.ttl,
             )
-            print_records(data)
+            print_records(rrset_result)
 
         elif arguments.action == "change-record":
             arguments.records = sanitize_records(
                 arguments.type, arguments.subname, arguments.records
             )
-            data = api_client.change_record(
+            rrset_result = api_client.change_record(
                 arguments.domain,
                 arguments.type,
                 arguments.subname,
                 arguments.records,
                 arguments.ttl,
             )
-            print_records(data)
+            print_records(rrset_result)
 
         elif arguments.action == "update-record":
             arguments.records = sanitize_records(
                 arguments.type, arguments.subname, arguments.records
             )
-            data = api_client.update_record(
+            rrset_result = api_client.update_record(
                 arguments.domain,
                 arguments.type,
                 arguments.subname,
                 arguments.records,
                 arguments.ttl,
             )
-            print_records(data)
+            print_records(rrset_result)
 
         elif arguments.action == "delete-record":
             if arguments.records:
@@ -1463,13 +1669,18 @@ def main():
                 arguments.domain,
             )
 
+            records: list[JsonRRsetWritableType]
             records = []
             for port in arguments.ports:
                 subname = f"_{port}._{arguments.protocol}.{arguments.subname}"
                 if arguments.action == "add-tlsa":
-                    existing_rrset = api_client.get_records(arguments.domain, "TLSA", subname)
-                    if existing_rrset:
-                        existing_rrset = existing_rrset[0]["records"]
+                    try:
+                        existing_rrset = api_client.get_records(arguments.domain, "TLSA", subname)[
+                            0
+                        ]["records"]
+                    except IndexError:
+                        # There is no existing TLSA RRset at this subname.
+                        existing_rrset = []
                 else:
                     existing_rrset = []
                 records.append(
@@ -1481,20 +1692,20 @@ def main():
                     }
                 )
 
-            data = api_client.update_bulk_record(arguments.domain, records)
-            print_rrsets(data)
+            rrsets_result = api_client.update_bulk_record(arguments.domain, records)
+            print_rrsets(rrsets_result)
 
         elif arguments.action == "export":
-            data = api_client.get_records(arguments.domain)
+            rrsets_result = api_client.get_records(arguments.domain)
             # Write the data to the export file in json format
             with open(arguments.file, "w") as f:
-                json.dump(data, f)
+                json.dump(rrsets_result, f)
 
         elif arguments.action == "export-zone":
-            data = api_client.export_zonefile_domain(arguments.domain)
+            zone_result = api_client.export_zonefile_domain(arguments.domain)
             # Write the data to the export file in zonefile format
             with open(arguments.file, "w") as f:
-                f.write(data)
+                f.write(zone_result)
 
         elif arguments.action == "import":
             with open(arguments.file, "r") as f:
@@ -1505,8 +1716,10 @@ def main():
             except NotFoundError:
                 api_client.new_domain(arguments.domain)
 
-            data = api_client.update_bulk_record(arguments.domain, records, arguments.clear)
-            print_rrsets(data)
+            rrsets_result = api_client.update_bulk_record(
+                arguments.domain, records, arguments.clear
+            )
+            print_rrsets(rrsets_result)
 
         elif arguments.action == "import-zone":
             record_list = parse_zone_file(
@@ -1516,8 +1729,8 @@ def main():
             )
             for entry in record_list:
                 if "error_msg" in entry:
-                    action = "Corrected" if entry["error_recovered"] else "Skipped"
-                    print(f"{entry['error_msg']} {action}.", file=sys.stderr)
+                    error_action = "Corrected" if entry["error_recovered"] else "Skipped"
+                    print(f"{entry['error_msg']} {error_action}.", file=sys.stderr)
             record_list = clear_errors_from_record_list(record_list)
 
             if arguments.dry_run:
@@ -1527,10 +1740,10 @@ def main():
                 )
                 print_rrsets(record_list)
             else:
-                data = api_client.update_bulk_record(
+                rrsets_result = api_client.update_bulk_record(
                     arguments.domain, record_list, arguments.clear
                 )
-                print_rrsets(data)
+                print_rrsets(rrsets_result)
 
     except AuthenticationError as e:
         print("Invalid token.")
