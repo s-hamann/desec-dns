@@ -144,13 +144,11 @@ class TLSAField:
         self._value = int(value)
         try:
             self.valid_values[self._value]
-        except IndexError:
-            self._value = None
+        except IndexError as ex:
+            raise ValueError(f"Invalid type {value} for {self.__class__}") from ex
 
     def __eq__(self, other):
-        if self._value is None:
-            return False
-        elif isinstance(other, int):
+        if isinstance(other, int):
             return self._value == other
         elif isinstance(other, str):
             return self.valid_values[self._value] == other.upper()
@@ -158,10 +156,7 @@ class TLSAField:
             return self._value == other._value
 
     def __repr__(self):
-        if self._value is None:
-            return ""
-        else:
-            return self.valid_values[self._value]
+        return self.valid_values[self._value]
 
     def __int__(self):
         return self._value
@@ -931,6 +926,8 @@ def tlsa_record(
         data = sha256(data).hexdigest()
     elif match_type == "SHA2-512":
         data = sha512(data).hexdigest()
+    else:
+        raise NotImplementedError(f"TLSA match type {match_type} is not implemented.")
 
     return f"{int(usage)} {int(selector)} {int(match_type)} {data}"
 
