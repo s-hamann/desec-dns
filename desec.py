@@ -168,8 +168,8 @@ class JsonRRsetFromZonefileType(JsonRRsetWritableType):
     error_recovered: t.NotRequired[bool]
 
 
-api_base_url = "https://desec.io/api/v1"
-record_types = t.get_args(DnsRecordTypeType)
+API_BASE_URL = "https://desec.io/api/v1"
+RECORD_TYPES = t.get_args(DnsRecordTypeType)
 
 
 class ExitCode(IntEnum):
@@ -397,7 +397,7 @@ class APIClient:
         :returns: dict containing tokens and information about them
 
         """
-        url = f"{api_base_url}/auth/tokens/"
+        url = f"{API_BASE_URL}/auth/tokens/"
         code, _, data = self.query("GET", url)
         if code == 200:
             return t.cast(list[JsonTokenType], data)
@@ -417,7 +417,7 @@ class APIClient:
         :returns: the newly created token
 
         """
-        url = f"{api_base_url}/auth/tokens/"
+        url = f"{API_BASE_URL}/auth/tokens/"
         request_data: JsonGenericType
         request_data = {"name": name}
         if manage_tokens is not None:
@@ -442,7 +442,7 @@ class APIClient:
         :returns: changed token information
 
         """
-        url = f"{api_base_url}/auth/tokens/{token_id}/"
+        url = f"{API_BASE_URL}/auth/tokens/{token_id}/"
         request_data: JsonGenericType
         request_data = {}
         if name is not None:
@@ -465,7 +465,7 @@ class APIClient:
         :returns: nothing
 
         """
-        url = f"{api_base_url}/auth/tokens/{token_id}/"
+        url = f"{API_BASE_URL}/auth/tokens/{token_id}/"
         code, _, data = self.query("DELETE", url)
         if code == 204:
             pass
@@ -482,7 +482,7 @@ class APIClient:
         :returns: list of policies
 
         """
-        url = f"{api_base_url}/auth/tokens/{token_id}/policies/rrsets/"
+        url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/"
         code, _, data = self.query("GET", url)
         if code == 200:
             return t.cast(list[JsonTokenPolicyType], data)
@@ -510,7 +510,7 @@ class APIClient:
         :returns: the new policy
 
         """
-        url = f"{api_base_url}/auth/tokens/{token_id}/policies/rrsets/"
+        url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/"
         request_data: JsonGenericType
         request_data = {
             "domain": domain,
@@ -549,7 +549,7 @@ class APIClient:
         :returns: the new policy
 
         """
-        url = f"{api_base_url}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
+        url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
         request_data: JsonGenericType
         request_data = {}
         if domain is not False:
@@ -579,7 +579,7 @@ class APIClient:
         :returns: nothing
 
         """
-        url = f"{api_base_url}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
+        url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
         code, _, data = self.query("DELETE", url)
         if code == 204:
             pass
@@ -595,7 +595,7 @@ class APIClient:
         :returns: list of domain names
 
         """
-        url = f"{api_base_url}/domains/"
+        url = f"{API_BASE_URL}/domains/"
         code, _, data = self.query("GET", url)
         if code == 200:
             return [domain["name"] for domain in t.cast(list[JsonDomainType], data)]
@@ -610,7 +610,7 @@ class APIClient:
         :returns: dict containing domain information
 
         """
-        url = f"{api_base_url}/domains/{domain}/"
+        url = f"{API_BASE_URL}/domains/{domain}/"
         code, _, data = self.query("GET", url)
         if code == 200:
             return t.cast(JsonDomainWithKeysType, data)
@@ -627,7 +627,7 @@ class APIClient:
         :returns: dict containing domain information
 
         """
-        url = f"{api_base_url}/domains/"
+        url = f"{API_BASE_URL}/domains/"
         code, _, data = self.query("POST", url, data={"name": domain})
         if code == 201:
             return t.cast(JsonDomainWithKeysType, data)
@@ -648,7 +648,7 @@ class APIClient:
         :returns: nothing
 
         """
-        url = f"{api_base_url}/domains/{domain}/"
+        url = f"{API_BASE_URL}/domains/{domain}/"
         code, _, data = self.query("DELETE", url)
         if code == 204:
             pass
@@ -663,7 +663,7 @@ class APIClient:
         :returns: plain-text zonefile format
 
         """
-        url = f"{api_base_url}/domains/{domain}/zonefile/"
+        url = f"{API_BASE_URL}/domains/{domain}/zonefile/"
         code, _, data = self.query("GET", url)
         if code == 200:
             return t.cast(str, data)
@@ -686,7 +686,7 @@ class APIClient:
 
         """
         url: str | None
-        url = f"{api_base_url}/domains/{domain}/rrsets/"
+        url = f"{API_BASE_URL}/domains/{domain}/rrsets/"
         code, headers, data = self.query("GET", url, {"subname": subname, "type": rtype})
         if code == 200:
             return t.cast(list[JsonRRsetType], data)
@@ -720,7 +720,7 @@ class APIClient:
         :returns: dict representing the created RRset
 
         """
-        url = f"{api_base_url}/domains/{domain}/rrsets/"
+        url = f"{API_BASE_URL}/domains/{domain}/rrsets/"
         code, _, data = self.query(
             "POST", url, {"subname": subname, "type": rtype, "records": rrset, "ttl": ttl}
         )
@@ -745,7 +745,7 @@ class APIClient:
         :rrset_list: List of RRsets
         :exclusive: Boolean. If True, all DNS records not in rrset_list are removed.
         """
-        url = f"{api_base_url}/domains/{domain}/rrsets/"
+        url = f"{API_BASE_URL}/domains/{domain}/rrsets/"
 
         if exclusive:
             # Delete all records not in rrset_list by adding RRsets with an empty 'records'
@@ -787,7 +787,7 @@ class APIClient:
         :returns: dict representing the changed RRset
 
         """
-        url = f"{api_base_url}/domains/{domain}/rrsets/{subname}.../{rtype}/"
+        url = f"{API_BASE_URL}/domains/{domain}/rrsets/{subname}.../{rtype}/"
         request_data: JsonGenericType
         request_data = {}
         if rrset:
@@ -843,7 +843,7 @@ class APIClient:
             self.change_record(domain, rtype, subname, records_to_keep)
         else:
             # Nothing should be kept, delete the whole RRset
-            url = f"{api_base_url}/domains/{domain}/rrsets/{subname}.../{rtype}/"
+            url = f"{API_BASE_URL}/domains/{domain}/rrsets/{subname}.../{rtype}/"
             code, _, _ = self.query("DELETE", url)
             if code == 204:
                 pass
@@ -987,7 +987,7 @@ def parse_zone_file(
             }
             rrset.ttl = minimum_ttl
 
-        if rdatatype.to_text(rrset.rdtype) not in record_types:
+        if rdatatype.to_text(rrset.rdtype) not in RECORD_TYPES:
             error = {
                 "error_msg": f"Record type {rdatatype.to_text(rrset.rdtype)} is not supported.",
                 "error_recovered": False,
@@ -1195,7 +1195,7 @@ def main() -> None:
     p.add_argument(
         "-t",
         "--type",
-        choices=record_types,
+        choices=RECORD_TYPES,
         metavar="TYPE",
         default=None,
         help="record type to which the policy applies",
@@ -1212,7 +1212,7 @@ def main() -> None:
     p.add_argument(
         "-t",
         "--type",
-        choices=record_types,
+        choices=RECORD_TYPES,
         metavar="TYPE",
         default=False,
         help="record type to which the policy applies",
@@ -1253,7 +1253,7 @@ def main() -> None:
     p.add_argument(
         "-t",
         "--type",
-        choices=record_types,
+        choices=RECORD_TYPES,
         metavar="TYPE",
         help="list only records of the given type",
     )
@@ -1264,7 +1264,7 @@ def main() -> None:
     p.add_argument(
         "-t",
         "--type",
-        choices=record_types,
+        choices=RECORD_TYPES,
         metavar="TYPE",
         required=True,
         help="record type to add",
@@ -1289,7 +1289,7 @@ def main() -> None:
     p.add_argument(
         "-t",
         "--type",
-        choices=record_types,
+        choices=RECORD_TYPES,
         metavar="TYPE",
         required=True,
         help="record type to change",
@@ -1308,7 +1308,7 @@ def main() -> None:
     p.add_argument(
         "-t",
         "--type",
-        choices=record_types,
+        choices=RECORD_TYPES,
         metavar="TYPE",
         required=True,
         help="record type to delete",
@@ -1334,7 +1334,7 @@ def main() -> None:
     p.add_argument(
         "-t",
         "--type",
-        choices=record_types,
+        choices=RECORD_TYPES,
         metavar="TYPE",
         required=True,
         help="record type to add",
