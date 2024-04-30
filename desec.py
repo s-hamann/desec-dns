@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 # vim: encoding=utf-8
-"""Simple API client for desec.io"""
+"""Simple API client for desec.io.
+
+It can be used as a standalone CLI tool or as a python module.
+For more information on the CLI, run it with the --help parameter.
+For more information on the module's classes and functions, refer to the respective
+docstrings.
+"""
 
 from __future__ import annotations
 
@@ -184,55 +190,74 @@ class ExitCode(IntEnum):
 
 
 class APIError(Exception):
-    """Exception for errors returned by the API"""
+    """Exception for errors returned by the API."""
 
     error_code = ExitCode.API
 
 
 class AuthenticationError(APIError):
-    """Exception for authentication failure"""
+    """Exception for authentication failure."""
 
     error_code = ExitCode.AUTH
 
 
 class NotFoundError(APIError):
-    """Exception when data can not be found"""
+    """Exception when data can not be found."""
 
     error_code = ExitCode.NOT_FOUND
 
 
 class ParameterError(APIError):
-    """Exception for invalid parameters, such as DNS records"""
+    """Exception for invalid parameters, such as DNS records."""
 
     error_code = ExitCode.INVALID_PARAMETERS
 
 
 class TLSACheckError(APIError):
-    """Exception for TLSA record setup sanity check errors"""
+    """Exception for TLSA record setup sanity check errors."""
 
     error_code = ExitCode.TLSA_CHECK
 
 
 class RateLimitError(APIError):
-    """Exception for API rate limits"""
+    """Exception for API rate limits."""
 
     error_code = ExitCode.RATE_LIMIT
 
 
 class TokenAuth(requests.auth.AuthBase):
-    """Token-based authentication for requests"""
+    """Token-based authentication for requests.
+
+    Custom authentication hook for requests to handle token-based authentication as
+    required by the deSEC API.
+
+    Args:
+        token: The authentication token value.
+
+    """
 
     def __init__(self, token: str):
         self.token = token
 
     def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
+        """Attaches token-based Authorization header to a given Request object."""
         r.headers["Authorization"] = f"Token {self.token}"
         return r
 
 
 class TLSAField:
-    """Abstract class for TLSA fields that handles numeric values and symbolic names
-    interchangably"""
+    """Abstract class for handling TLSA fields.
+
+    This class (or its subclasses) allow using numeric values and symbolic names
+    interchangeably.
+
+    Args:
+        value: The field value this objects represents. May be numeric or symbolic.
+
+    Raises:
+        ValueError: The supplied value is not valid for this type of field.
+
+    """
 
     valid_values: list[str]
 
@@ -264,31 +289,34 @@ class TLSAField:
 
 
 class TLSAUsage(TLSAField):
-    """TLSA certificate usage information"""
+    """TLSA certificate usage information."""
 
     valid_values = ["PKIX-TA", "PKIX-EE", "DANE-TA", "DANE-EE"]
 
 
 class TLSASelector(TLSAField):
-    """TLSA selector"""
+    """TLSA selector."""
 
     valid_values = ["CERT", "SPKI"]
 
 
 class TLSAMatchType(TLSAField):
-    """TLSA match type"""
+    """TLSA match type."""
 
     valid_values = ["FULL", "SHA2-256", "SHA2-512"]
 
 
 class APIClient:
-    """deSEC.io API client"""
+    """deSEC.io API client.
+
+    Args:
+        token: API authorization token
+        retry_limit: Number of retries when hitting the API's rate limit.
+            Set to 0 to disable.
+
+    """
 
     def __init__(self, token: str, retry_limit: int = 3):
-        """
-        :token: API authorization token
-        :retry_limit: Number of retries when hitting the API's rate limit. Set to 0 to disable.
-        """
         self._token_auth = TokenAuth(token)
         self._retry_limit = retry_limit
 
@@ -311,12 +339,36 @@ class APIClient:
         url: str,
         data: JsonGenericType = None,
     ) -> tuple[int, requests.structures.CaseInsensitiveDict[str], JsonGenericType]:
-        """Query the API
+        """Query the API.
 
-        :method: HTTP method to use
-        :url: target URL
-        :data: data to send
-        :returns: (status code, response headers, response data)
+        This method handles low-level queries to the deSEC API and should not be used
+        directly. Prefer the more high-level methods that implement specific API functions
+        instead.
+        If the initial request hits the API's rate limit, it is retired up to
+        `self._retry_limit` times, after waiting for the interval returned by the API.
+        Unless another process is using the API in parallel, no more than one retry
+        should be needed.
+
+        Args:
+            method: HTTP method to use.
+            url: Target URL to query.
+            data: Data to send in either the body or as URL parameters (for HTTP methods
+                that do not support body parameters). URL parameters must be supplied as a
+                simple key-value dictionary while body parameters may be more complex JSON
+                structures.
+
+        Returns:
+            A tuple containing the HTTP response status code, the response headers and the
+            response body.
+            If the response body contains JSON data, it is parsed into the respective Python
+            data structures.
+            If the response body is empty, `None` is returned in the third tuple element.
+
+        Raises:
+            RateLimitError: The request hit the API's rate limit. Retries up to the
+                configured limit were made, but also hit the rate limit.
+            AuthenticationError: The supplied authentication token is not valid for this
+                query (e.g. the domain is not managed by this account).
 
         """
         if method == "GET" or method == "DELETE":
@@ -370,11 +422,17 @@ class APIClient:
         return (r.status_code, r.headers, response_data)
 
     def parse_links(self, links: str) -> dict[str, str]:
-        """Parse `Link:` response header used for pagination
+        """Parse `Link:` response header used for pagination.
+
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#pagination
 
-        :links: `Link:` header returned by the API
-        :returns: dict containing urls from header
+        Args:
+            links: `Link:` header returned by the API.
+
+        Returns:
+            A dictionary containing the URLs from the header, indexed by their respective
+            `rel` attribute. In other words, the "next" attribute references the URL that
+            returns the next portion of the requested data.
 
         """
         mapping = {}
@@ -390,10 +448,18 @@ class APIClient:
         return mapping
 
     def list_tokens(self) -> list[JsonTokenType]:
-        """Return a list of all tokens
+        """Return information about all current tokens.
+
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#retrieving-all-current-tokens
 
-        :returns: dict containing tokens and information about them
+        Returns:
+            A list of tokens that exist for the current account. Each token is returned as a
+            dictionary containing all available token metadata. Note that the actual token
+            values are not included, as the API does not return them.
+
+        Raises:
+            APIError: The token used for authentication does not have the "manage_tokens"
+                attribute or the API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/"
@@ -409,11 +475,20 @@ class APIClient:
         self, name: str = "", manage_tokens: bool | None = None
     ) -> JsonTokenSecretType:
         """Create a new authentication token.
+
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#create-additional-tokens
 
-        :name: the name of the token
-        :manage_tokens: boolean indicating whether the token can manage tokens
-        :returns: the newly created token
+        Args:
+            name: Set the "name" attribute of the new token to this value.
+            manage_tokens: Set the "manage_tokens" attribute of the new token to this value.
+
+        Returns:
+            A dictionary containing all metadata of the newly created token as well as the
+            token value itself.
+
+        Raises:
+            APIError: The token used for authentication does not have the "manage_tokens"
+                attribute or the API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/"
@@ -433,12 +508,22 @@ class APIClient:
         self, token_id: str, name: str | None = None, manage_tokens: bool | None = None
     ) -> JsonTokenType:
         """Modify an existing authentication token.
+
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#modifying-a-token
 
-        :token_id: the unique id of the token to modify
-        :name: the name of the token
-        :manage_tokens: boolean indicating whether the token can manage tokens
-        :returns: changed token information
+        Args:
+            token_id: The unique id of the token to modify.
+            name: Set the "name" attribute of the target token to this value.
+            manage_tokens: Set the "manage_tokens" attribute of the target token to this
+                value.
+
+        Returns:
+            A dictionary containing all metadata of the changed token, not including the
+            token value itself.
+
+        Raises:
+            APIError: The token used for authentication does not have the "manage_tokens"
+                attribute or the API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/"
@@ -457,11 +542,16 @@ class APIClient:
             raise APIError(f"Unexpected error code {code}")
 
     def delete_token(self, token_id: str) -> None:
-        """Delete an authentication token
+        """Delete an authentication token.
+
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#delete-tokens
 
-        :token_id: the unique id of the token to delete
-        :returns: nothing
+        Args:
+            token_id: The unique id of the token to delete.
+
+        Raises:
+            APIError: The token used for authentication does not have the "manage_tokens"
+                attribute or the API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/"
@@ -474,11 +564,20 @@ class APIClient:
             raise APIError(f"Unexpected error code {code}")
 
     def list_token_policies(self, token_id: str) -> list[JsonTokenPolicyType]:
-        """Return a list of all policies for the given token
+        """Return a list of all policies for the given token.
+
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
 
-        :token_id: the unique id of the token
-        :returns: list of policies
+        Args:
+            token_id: The unique id of the token for which to get policies.
+
+        Returns:
+            A list of token policies for the given token. Each policy is returned as a
+            dictionary containing all available policy data.
+
+        Raises:
+            APIError: The token used for authentication does not have the "manage_tokens"
+                attribute or the API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/"
@@ -498,15 +597,25 @@ class APIClient:
         rtype: str | None = None,
         perm_write: bool = False,
     ) -> JsonTokenPolicyType:
-        """Add a policy to the given token
+        """Add a policy to the given token.
+
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
 
-        :token_id: the unique id of the token
-        :domain: the domain to which the policy applies. None indicates the default policy.
-        :subname: DNS entry name. None indicates the default policy.
-        :rtype: DNS record type. None indicates the default policy.
-        :perm_write: boolean indicating whether to allow or deny writes
-        :returns: the new policy
+        Args:
+            token_id: The unique id of the token for which to add a policy.
+            domain: The domain to which the policy applies. `None` indicates the default
+                policy.
+            subname: DNS entry name. `None` indicates the default policy.
+            rtype: DNS record type. `None` indicates the default policy.
+            perm_write: Boolean indicating whether to allow or deny writes.
+
+        Returns:
+            A dictionary containing all data of the newly created token policy.
+
+        Raises:
+            APIError: The token used for authentication does not have the "manage_tokens"
+                attribute or there is a conflicting policy for this token, domain, subname
+                and type or the API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/"
@@ -536,16 +645,29 @@ class APIClient:
         rtype: str | None | t.Literal[False] = False,
         perm_write: bool | None = None,
     ) -> JsonTokenPolicyType:
-        """Modify an existing policy for the given token
+        """Modify an existing policy for the given token.
+
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
 
-        :token_id: the unique id of the token
-        :policy_id: the unique id of the policy
-        :domain: the domain to which the policy applies. None indicates the default policy. False leaves the value unchanged.
-        :subname: DNS entry name. None indicates the default policy. False leaves the value unchanged.
-        :rtype: DNS record type. None indicates the default policy. False leaves the value unchanged.
-        :perm_write: boolean indicating whether to allow or deny writes. None leaves the value unchanged.
-        :returns: the new policy
+        Args:
+            token_id: The unique id of the token for which to modify a policy.
+            policy_id: The unique id of the policy to modify.
+            domain: Set the domain to which the policy applies. `None` indicates the
+                default policy. `False` leaves the value unchanged.
+            subname: Set the DNS entry name. `None` indicates the default policy. `False`
+                leaves the value unchanged.
+            rtype: Set the DNS record type. `None` indicates the default policy. `False`
+                leaves the value unchanged.
+            perm_write: Boolean indicating whether to allow or deny writes. `None` leaves
+                the value unchanged.
+
+        Returns:
+            A dictionary containing all data of the modified token policy.
+
+        Raises:
+            APIError: The token used for authentication does not have the "manage_tokens"
+                attribute or there is a conflicting policy for this token, domain, subname
+                and type or the API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
@@ -570,12 +692,17 @@ class APIClient:
             raise APIError(f"Unexpected error code {code}")
 
     def delete_token_policy(self, token_id: str, policy_id: str) -> None:
-        """Delete an existing policy for the given token
+        """Delete an existing policy for the given token.
+
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
 
-        :token_id: the unique id of the token
-        :policy_id: the unique id of the policy
-        :returns: nothing
+        Args:
+            token_id: The unique id of the token for which to delete a policy.
+            policy_id: The unique id of the policy to delete.
+
+        Raises:
+            APIError: The token used for authentication does not have the "manage_tokens"
+                attribute or the API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
@@ -588,10 +715,15 @@ class APIClient:
             raise APIError(f"Unexpected error code {code}")
 
     def list_domains(self) -> list[str]:
-        """Return a list of all registered domains
+        """Return a list of all registered domains.
+
         See https://desec.readthedocs.io/en/latest/dns/domains.html#listing-domains
 
-        :returns: list of domain names
+        Returns:
+            A list of all registered domain names for the current account.
+
+        Raises:
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/domains/"
@@ -602,11 +734,20 @@ class APIClient:
             raise APIError(f"Unexpected error code {code}")
 
     def domain_info(self, domain: str) -> JsonDomainWithKeysType:
-        """Return basic information about a domain
+        """Return basic information about a domain.
+
         See https://desec.readthedocs.io/en/latest/dns/domains.html#retrieving-a-specific-domain
 
-        :domain: domain name
-        :returns: dict containing domain information
+        Args:
+            domain: The name of the domain to retrieve.
+
+        Returns:
+            A dictionary containing all metadata for the given domain including DNSSEC key
+            information.
+
+        Raises:
+            NotFoundError: The given domain was not found in the current account.
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/domains/{domain}/"
@@ -619,11 +760,22 @@ class APIClient:
             raise APIError(f"Unexpected error code {code}")
 
     def new_domain(self, domain: str) -> JsonDomainWithKeysType:
-        """Create a new domain
+        """Create a new domain.
+
         See https://desec.readthedocs.io/en/latest/dns/domains.html#creating-a-domain
 
-        :domain: domain name
-        :returns: dict containing domain information
+        Args:
+            domain: The name of the domain to create.
+
+        Returns:
+            A dictionary containing all metadata for the newly created domain including
+            DNSSEC key information.
+
+        Raises:
+            ParameterError: The given domain name is incorrect or the domain could not be
+                created for another reason.
+            APIError: The maximum number of domains for the current account has been
+                reached or the API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/domains/"
@@ -640,11 +792,15 @@ class APIClient:
             raise APIError(f"Unexpected error code {code}")
 
     def delete_domain(self, domain: str) -> None:
-        """Delete a domain
+        """Delete a domain.
+
         See https://desec.readthedocs.io/en/latest/dns/domains.html#deleting-a-domain
 
-        :domain: domain name
-        :returns: nothing
+        Args:
+            domain: The name of the domain to delete.
+
+        Raises:
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/domains/{domain}/"
@@ -655,11 +811,19 @@ class APIClient:
             raise APIError(f"Unexpected error code {code}")
 
     def export_zonefile_domain(self, domain: str) -> str:
-        """Export a domain as a zonefile
+        """Export a domain as a zonefile.
+
         See https://desec.readthedocs.io/en/latest/dns/domains.html#exporting-a-domain-as-zonefile
 
-        :domain: domain name
-        :returns: plain-text zonefile format
+        Args:
+            domain: The name of the domain to export.
+
+        Returns:
+            All of the domain's non-DNSSEC records in plain-text zonefile format.
+
+        Raises:
+            NotFoundError: The given domain was not found in the current account.
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/domains/{domain}/zonefile/"
@@ -674,14 +838,28 @@ class APIClient:
     def get_records(
         self, domain: str, rtype: DnsRecordTypeType | None = None, subname: str | None = None
     ) -> list[JsonRRsetType]:
-        """Return all records of a domain, possibly restricted to records of type `rtype` and
-        subname `subname`
+        """Return (a subset of) all RRsets of a domain.
+
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#retrieving-all-rrsets-in-a-zone
 
-        :domain: domain name
-        :rtype: DNS record type
-        :subname: DNS entry name
-        :returns: list of dicts representing RRsets
+        If there are more RRsets that the API returns in a single response, it is queried
+        repeatedly until all records are retrieved. They are returned by this method in a
+        single list.
+
+        Args:
+            domain: The name of the domain to query.
+            rtype: Return only records of this DNS record type. `None` returns records of
+                any type.
+            subname: Return only records at this DNS entry name. `None` returns records for
+                all names.
+
+        Returns:
+            A list of DNS records matching the given filters. Each record is returned as a
+            dictionary containing all data and metadata of this RRset.
+
+        Raises:
+            NotFoundError: The given domain was not found in the current account.
+            APIError: The API returned an unexpected error.
 
         """
         url: str | None
@@ -708,15 +886,28 @@ class APIClient:
     def add_record(
         self, domain: str, rtype: DnsRecordTypeType, subname: str, rrset: t.Sequence[str], ttl: int
     ) -> JsonRRsetType:
-        """Add a new RRset. There must not be a RRset for this domain-type-subname combination
+        """Add a new RRset.
+
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#creating-an-rrset
 
-        :domain: domain name
-        :rtype: DNS record type
-        :subname: DNS entry name
-        :rrset: list of DNS record contents
-        :ttl: TTL for the DNS entry
-        :returns: dict representing the created RRset
+        There must not be a RRset for this domain-type-subname combination. To modify an
+        existing RRset use `change_record` or `update_record`.
+
+        Args:
+            domain: The name of the domain to add the RRset to.
+            rtype: DNS record type of the new RRset.
+            subname: DNS entry name of the new RRset.
+            rrset: List of DNS record contents.
+            ttl: TTL for new the RRset.
+
+        Returns:
+            A dictionary containing all data and metadata of the new RRset.
+
+        Raises:
+            NotFoundError: The given domain was not found in the current account.
+            ParameterError: The RRset is invalid.
+            APIError: The RRset could not be created or the API returned an unexpected
+                error.
 
         """
         url = f"{API_BASE_URL}/domains/{domain}/rrsets/"
@@ -738,11 +929,18 @@ class APIClient:
         self, domain: str, rrset_list: t.Sequence[JsonRRsetWritableType], exclusive: bool = False
     ) -> list[JsonRRsetType]:
         """Update RRsets in bulk.
+
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#bulk-operations
 
-        :domain: domain name
-        :rrset_list: List of RRsets
-        :exclusive: Boolean. If True, all DNS records not in rrset_list are removed.
+        Args:
+            domain: The name of the domain for which to modify records.
+            rrset_list: List of RRsets to update.
+            exclusive: If `True`, all DNS records not in `rrset_list` are removed.
+
+        Raises:
+            NotFoundError: The given domain was not found in the current account.
+            APIError: The bulk operation failed or the API returned an unexpected error.
+
         """
         url = f"{API_BASE_URL}/domains/{domain}/rrsets/"
 
@@ -774,16 +972,25 @@ class APIClient:
         rrset: t.Sequence[str] | None = None,
         ttl: int | None = None,
     ) -> JsonRRsetType:
-        """Change an existing RRset. Existing data is replaced by the provided `rrset` and `ttl`
-        (if provided)
+        """Change an existing RRset.
+
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#modifying-an-rrset
 
-        :domain: domain name
-        :rtype: DNS record type
-        :subname: DNS entry name
-        :rrset: list of DNS record contents
-        :ttl: TTL for the DNS entry
-        :returns: dict representing the changed RRset
+        Args:
+            domain: The name of the domain for which to modify a record.
+            rtype: DNS record type of the record to modify.
+            subname: DNS entry name of the record to modify.
+            rrset: Set the DNS record contents, removing any existing data. `None` leaves
+                the record contents unchanged.
+            ttl: Set this TTL for the given RRset. `None` leaves the TTL unchanged.
+
+        Returns:
+            A dictionary containing all data and metadata of the modified RRset.
+
+        Raises:
+            NotFoundError: The RRset to modify was not found in the current account.
+            ParameterError: The RRset could not be changed to the given parameters.
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/domains/{domain}/rrsets/{subname}.../{rtype}/"
@@ -814,15 +1021,19 @@ class APIClient:
         subname: str,
         rrset: t.Sequence[str] | None = None,
     ) -> None:
-        """Delete an existing RRset or records from an RRset
+        """Delete an existing RRset or delete records from an RRset.
+
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#deleting-an-rrset
 
-        :domain: domain name
-        :rtype: DNS record type
-        :subname: DNS entry name
-        :rrset: delete only the records in this rrset and keep any others
-                (None means to delete everything)
-        :returns: nothing
+        Args:
+            domain: The name of the domain for which to delete a record.
+            rtype: DNS record type of the record to delete.
+            subname: DNS entry name of the record to delete.
+            rrset: A list of record contents to delete. `None` deletes the whole RRset.
+
+        Raises:
+            NotFoundError: The given domain was not found in the current account.
+            APIError: The API returned an unexpected error.
 
         """
         records_to_keep = None
@@ -859,16 +1070,27 @@ class APIClient:
         rrset: list[str],
         ttl: int | None = None,
     ) -> JsonRRsetType:
-        """Change an existing RRset or create a new one. Records are added to the existing records
-        (if any). `ttl` is used only when creating a new record sets. For existing records sets,
-        the existing TTL is kept.
+        """Change an existing RRset or create a new one.
 
-        :domain: domain name
-        :rtype: DNS record type
-        :subname: DNS entry name
-        :rrset: list of DNS record contents
-        :ttl: TTL for the DNS entry
-        :returns: dict representing the new RRset
+        Records are added to the existing records (if any). `ttl` is used only when
+        creating a new RRset. For existing RRsets, the existing TTL is kept.
+
+        Args:
+            domain: The name of the domain for which to modify or add a record.
+            rtype: DNS record type of the record to modify or add.
+            subname: DNS entry name of the record to modify or add.
+            rrset: The DNS record contents to add.
+            ttl: When creating a new RRset, set its TTL to this value. `None` is only valid
+                if the target RRset already exists.
+
+        Returns:
+            A dictionary containing all data and metadata of the modified or created RRset.
+
+        Raises:
+            ParameterError: The target RRset does not exist and `ttl` is `None` or the RRset
+                could not be changed to the given parameters.
+            APIError: The RRset could not be created or the API returned an unexpected
+                error.
 
         """
         data = self.get_records(domain, rtype, subname)
@@ -884,11 +1106,11 @@ class APIClient:
 
 
 def print_records(rrset: JsonRRsetType | JsonRRsetFromZonefileType, **kwargs: t.Any) -> None:
-    """Print a RRset
+    """Print a RRset in zone file format.
 
-    :rrset: the RRset to print
-    :**kwargs: additional keyword arguments to print()
-    :returns: nothing
+    Args:
+        rrset: The RRset to print.
+        **kwargs: Additional keyword arguments to print().
 
     """
     for record in rrset["records"]:
@@ -899,11 +1121,11 @@ def print_records(rrset: JsonRRsetType | JsonRRsetFromZonefileType, **kwargs: t.
 def print_rrsets(
     rrsets: t.Sequence[JsonRRsetType | JsonRRsetFromZonefileType], **kwargs: t.Any
 ) -> None:
-    """Print multiple RRsets
+    """Print multiple RRsets in zone file format.
 
-    :rrsets: the RRsets to print
-    :**kwargs: additional keyword arguments to print()
-    :returns: nothing
+    Args:
+        rrsets: The RRsets to print.
+        **kwargs: Additional keyword arguments to print().
 
     """
     for rrset in rrsets:
@@ -911,14 +1133,23 @@ def print_rrsets(
 
 
 def sanitize_records(rtype: DnsRecordTypeType, subname: str, rrset: list[str]) -> list[str]:
-    """Check the given DNS records for common errors and return a copy with fixed data. Raise an
-    Exception if not all errors can be fixed.
+    """Check the given DNS records for common errors and return a copy with fixed data.
+
     See https://desec.readthedocs.io/en/latest/dns/rrsets.html#caveats
 
-    :rtype: DNS record type
-    :subname: DNS entry name
-    :rrset: list of DNS record contents
-    :returns: list of DNS record contents
+    This function corrects fixable errors and raises an exception if there remain errors
+    that are not trivially fixable.
+
+    Args:
+        rtype: DNS record type to check.
+        subname: DNS entry name to check.
+        rrset: List of DNS record contents to check.
+
+    Returns:
+        The `rrset` parameter, possibly with applied fixes.
+
+    Raises:
+        ParameterError: An unfixable error was found.
 
     """
     if rtype == "CNAME" and rrset and len(rrset) > 1:
@@ -942,18 +1173,21 @@ def sanitize_records(rtype: DnsRecordTypeType, subname: str, rrset: list[str]) -
 def parse_zone_file(
     path: str | pathlib.Path, domain: str, minimum_ttl: int = 3600
 ) -> list[JsonRRsetFromZonefileType]:
-    """Parse a zone file into a list of rrsets that can be supplied to the API, e.g. using
-    update_bulk_record(). The list of rrsets may contain invalid records. It should be passed to
-    clear_errors_from_record_list() before passing it to the API.
+    """Parse a zone file into a list of RRsets that can be supplied to the API.
 
-    :path: path to the zone file to parse
-    :domain: domain of all records in the zone file
-    :minimum_ttl: minimum TTL value for records in the target domain
-    :returns: a list of dictionaries describing the DNS records in the zone file with additional
-        error information for records with errors
+    The list of RRsets may contain invalid records. It should be passed to
+    `clear_errors_from_record_list` before passing it to the API.
+
+    Args:
+        path: Path to the zone file to parse.
+        domain: The domain name of all records in the zone file.
+        minimum_ttl: The Minimum TTL value for records in the target domain.
+
+    Returns:
+        A list of dictionaries describing the DNS records in the zone file with additional
+        error information for records with errors.
 
     """
-
     # Let dnspython parse the zone file.
     parsed_zone = zone.from_file(path, origin=domain, relativize=False, check_origin=False)
 
@@ -1016,13 +1250,15 @@ def parse_zone_file(
 def clear_errors_from_record_list(
     record_list: t.Sequence[JsonRRsetFromZonefileType],
 ) -> list[JsonRRsetFromZonefileType]:
-    """Remove error information added by parse_zone_file() and all items with
-    non-recoverable errors.
+    """Remove error information added by `parse_zone_file` and all items with errors.
 
-    :record_list: a list of dictionaries describing DNS records with additional error
-        information for records with errors
-    :returns: a list of dictionaries describing DNS records without error information or
-        records that were marked as erroneous
+    Args:
+        record_list: A list of dictionaries describing DNS records with additional error
+            information for records with errors, as returned by `parse_zone_file`.
+
+    Returns:
+        A list of dictionaries describing DNS records without error information or
+        records that were marked as erroneous.
 
     """
     # Remove all items with non-recoverable errors.
@@ -1044,16 +1280,23 @@ def tlsa_record(
     domain: str | None = None,
 ) -> str:
     """Return the TLSA record for the given certificate, usage, selector and match_type.
-    Raise an Exception if the given parameters do not seem to make sense.
 
-    :file: Path to the X.509 certificate to generate the record for. PEM and DER encoded files work
-    :usage: Value of type TLSAUsage. See RFC 6698, Section 2.1.1
-    :selector: Value of type TLSASelector. See RFC 6698, Section 2.1.2
-    :match_type: Value of type TLSAMatchType. See RFC 6698, Section 2.1.3
-    :check: Whether to do sanity checks. Boolean.
-    :subname: Subname the TLSA record will be valid for. Only used when `check` is True.
-    :domain: Domain the TLSA record will be valid for. Only used when `check` is True.
-    :returns: A string containing the rrset data for a TLSA records for the given parameters.
+    Args:
+        file: Path to the X.509 certificate to generate the record for. PEM and DER encoded
+            files work.
+        usage: Usage value for the TLSA record. See RFC 6698, Section 2.1.1
+        selector: Selector value for the TLS record. See RFC 6698, Section 2.1.2
+        match_type: Match type value for the TLS record. See RFC 6698, Section 2.1.3
+        check: Whether to do consistency checks on the input data.
+        subname: Subname the TLSA record will be valid for. Only used when `check` is True.
+        domain: Domain the TLSA record will be valid for. Only used when `check` is True.
+
+    Returns:
+        A string containing the RRset data for a TLSA record for the given parameters.
+
+    Raises:
+        TLSACheckError: The certificate type and usage type do not match or the certificate
+            is not valid for the given host name.
 
     """
     # Read the certifiate from `file`.
@@ -1122,6 +1365,7 @@ def tlsa_record(
 
 
 def main() -> None:
+    """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="A simple deSEC.io API client")
     p_action = parser.add_subparsers(dest="action", metavar="action")
     p_action.required = True
