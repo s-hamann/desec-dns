@@ -21,8 +21,7 @@ import requests
 try:
     from cryptography import x509
     from cryptography.hazmat.backends import default_backend
-    from cryptography.hazmat.primitives.serialization import Encoding
-    from cryptography.hazmat.primitives.serialization import PublicFormat
+    from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
     cryptography_available = True
 except ModuleNotFoundError:
