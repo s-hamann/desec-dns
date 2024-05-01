@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim: encoding=utf-8
 """Simple API client for desec.io.
 
 It can be used as a standalone CLI tool or as a python module.
@@ -1780,7 +1779,7 @@ def main() -> None:
     if arguments.token:
         token = arguments.token
     else:
-        with open(arguments.token_file, "r") as f:
+        with open(arguments.token_file) as f:
             token = f.readline().strip()
     if arguments.block:
         api_client = APIClient(token)
@@ -1951,7 +1950,7 @@ def main() -> None:
                 f.write(zone_result)
 
         elif arguments.action == "import":
-            with open(arguments.file, "r") as f:
+            with open(arguments.file) as f:
                 records = json.load(f)
             # Create the domain if it does not exist.
             try:
