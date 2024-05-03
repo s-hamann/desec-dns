@@ -1,5 +1,0 @@
-[flake8]
-max-line-length = 99
-# E124 closing bracket does not match visual indentation [pep8]
-# E128 continuation line under-indented for visual indent [pep8]
-ignore = E124,E128
