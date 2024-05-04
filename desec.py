@@ -190,6 +190,7 @@ class ExitCode(IntEnum):
     NOT_FOUND = 6
     TLSA_CHECK = 7
     RATE_LIMIT = 8
+    PERMISSION = 9
 
 
 class APIError(Exception):
@@ -226,6 +227,12 @@ class RateLimitError(APIError):
     """Exception for API rate limits."""
 
     error_code = ExitCode.RATE_LIMIT
+
+
+class TokenPermissionError(APIError):
+    """Exception for API insufficient token permissions."""
+
+    error_code = ExitCode.PERMISSION
 
 
 class TokenAuth(requests.auth.AuthBase):
@@ -461,8 +468,9 @@ class APIClient:
             values are not included, as the API does not return them.
 
         Raises:
-            APIError: The token used for authentication does not have the "manage_tokens"
-                attribute or the API returned an unexpected error.
+            TokenPermissionError: The token used for authentication does not have the
+                "manage_tokens" attribute.
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/"
@@ -470,7 +478,7 @@ class APIClient:
         if code == 200:
             return t.cast(list[JsonTokenType], data)
         elif code == 403:
-            raise APIError("Insufficient permissions to manage tokens")
+            raise TokenPermissionError("Insufficient permissions to manage tokens")
         else:
             raise APIError(f"Unexpected error code {code}")
 
@@ -490,8 +498,9 @@ class APIClient:
             token value itself.
 
         Raises:
-            APIError: The token used for authentication does not have the "manage_tokens"
-                attribute or the API returned an unexpected error.
+            TokenPermissionError: The token used for authentication does not have the
+                "manage_tokens" attribute.
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/"
@@ -503,7 +512,7 @@ class APIClient:
         if code == 201:
             return t.cast(JsonTokenSecretType, data)
         elif code == 403:
-            raise APIError("Insufficient permissions to manage tokens")
+            raise TokenPermissionError("Insufficient permissions to manage tokens")
         else:
             raise APIError(f"Unexpected error code {code}")
 
@@ -525,8 +534,9 @@ class APIClient:
             token value itself.
 
         Raises:
-            APIError: The token used for authentication does not have the "manage_tokens"
-                attribute or the API returned an unexpected error.
+            TokenPermissionError: The token used for authentication does not have the
+                "manage_tokens" attribute.
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/"
@@ -540,7 +550,7 @@ class APIClient:
         if code == 200:
             return t.cast(JsonTokenType, data)
         elif code == 403:
-            raise APIError("Insufficient permissions to manage tokens")
+            raise TokenPermissionError("Insufficient permissions to manage tokens")
         else:
             raise APIError(f"Unexpected error code {code}")
 
@@ -553,8 +563,9 @@ class APIClient:
             token_id: The unique id of the token to delete.
 
         Raises:
-            APIError: The token used for authentication does not have the "manage_tokens"
-                attribute or the API returned an unexpected error.
+            TokenPermissionError: The token used for authentication does not have the
+                "manage_tokens" attribute.
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/"
@@ -562,7 +573,7 @@ class APIClient:
         if code == 204:
             pass
         elif code == 403:
-            raise APIError("Insufficient permissions to manage tokens")
+            raise TokenPermissionError("Insufficient permissions to manage tokens")
         else:
             raise APIError(f"Unexpected error code {code}")
 
@@ -579,8 +590,9 @@ class APIClient:
             dictionary containing all available policy data.
 
         Raises:
-            APIError: The token used for authentication does not have the "manage_tokens"
-                attribute or the API returned an unexpected error.
+            TokenPermissionError: The token used for authentication does not have the
+                "manage_tokens" attribute.
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/"
@@ -588,7 +600,7 @@ class APIClient:
         if code == 200:
             return t.cast(list[JsonTokenPolicyType], data)
         elif code == 403:
-            raise APIError("Insufficient permissions to manage tokens")
+            raise TokenPermissionError("Insufficient permissions to manage tokens")
         else:
             raise APIError(f"Unexpected error code {code}")
 
@@ -616,8 +628,9 @@ class APIClient:
             A dictionary containing all data of the newly created token policy.
 
         Raises:
-            APIError: The token used for authentication does not have the "manage_tokens"
-                attribute or there is a conflicting policy for this token, domain, subname
+            TokenPermissionError: The token used for authentication does not have the
+                "manage_tokens" attribute.
+            APIError: There is a conflicting policy for this token, domain, subname
                 and type or the API returned an unexpected error.
 
         """
@@ -633,7 +646,7 @@ class APIClient:
         if code == 201:
             return t.cast(JsonTokenPolicyType, data)
         elif code == 403:
-            raise APIError("Insufficient permissions to manage tokens")
+            raise TokenPermissionError("Insufficient permissions to manage tokens")
         elif code == 409:
             raise APIError("A conflicting policy exists")
         else:
@@ -668,8 +681,9 @@ class APIClient:
             A dictionary containing all data of the modified token policy.
 
         Raises:
-            APIError: The token used for authentication does not have the "manage_tokens"
-                attribute or there is a conflicting policy for this token, domain, subname
+            TokenPermissionError: The token used for authentication does not have the
+                "manage_tokens" attribute.
+            APIError: There is a conflicting policy for this token, domain, subname
                 and type or the API returned an unexpected error.
 
         """
@@ -688,7 +702,7 @@ class APIClient:
         if code == 200:
             return t.cast(JsonTokenPolicyType, data)
         elif code == 403:
-            raise APIError("Insufficient permissions to manage tokens")
+            raise TokenPermissionError("Insufficient permissions to manage tokens")
         elif code == 409:
             raise APIError("A conflicting policy exists")
         else:
@@ -704,8 +718,9 @@ class APIClient:
             policy_id: The unique id of the policy to delete.
 
         Raises:
-            APIError: The token used for authentication does not have the "manage_tokens"
-                attribute or the API returned an unexpected error.
+            TokenPermissionError: The token used for authentication does not have the
+                "manage_tokens" attribute.
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
@@ -713,7 +728,7 @@ class APIClient:
         if code == 204:
             pass
         elif code == 403:
-            raise APIError("Insufficient permissions to manage tokens")
+            raise TokenPermissionError("Insufficient permissions to manage tokens")
         else:
             raise APIError(f"Unexpected error code {code}")
 
