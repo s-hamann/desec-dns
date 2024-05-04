@@ -793,7 +793,8 @@ class APIClient:
             ParameterError: The given domain name is incorrect or the domain could not be
                 created for another reason.
             APIError: The maximum number of domains for the current account has been
-                reached or the API returned an unexpected error.
+                reached, the token used for authentication can not create domains  or the
+                API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/domains/"
@@ -803,7 +804,11 @@ class APIClient:
         elif code == 400:
             raise ParameterError(f"Malformed domain name {domain}")
         elif code == 403:
-            raise APIError("Maximum number of domains reached")
+            try:
+                message = t.cast(dict[t.Literal["detail"], str], data)["detail"]
+            except KeyError:
+                message = "Forbidden"
+            raise APIError(message)
         elif code == 409:
             raise ParameterError(f"Could not create domain {domain} ({data})")
         else:
@@ -818,6 +823,8 @@ class APIClient:
             domain: The name of the domain to delete.
 
         Raises:
+            TokenPermissionError: The token used for authentication does not have write
+                permissions to the domain.
             APIError: The API returned an unexpected error.
 
         """
@@ -825,6 +832,8 @@ class APIClient:
         code, _, data = self.query("DELETE", url)
         if code == 204:
             pass
+        elif code == 403:
+            raise TokenPermissionError("Insufficient permissions to write domain")
         else:
             raise APIError(f"Unexpected error code {code}")
 
@@ -924,6 +933,8 @@ class APIClient:
         Raises:
             NotFoundError: The given domain was not found in the current account.
             ParameterError: The RRset is invalid.
+            TokenPermissionError: The token used for authentication does not have write
+                permissions to this record.
             APIError: The RRset could not be created or the API returned an unexpected
                 error.
 
@@ -940,6 +951,8 @@ class APIClient:
             raise ParameterError(f"Invalid RRset {rrset} for {rtype} record {subname}.{domain}")
         elif code == 400:
             raise APIError(f"Could not create RRset {rrset} for {rtype} record {subname}.{domain}")
+        elif code == 403:
+            raise TokenPermissionError("Insufficient permissions to write record")
         else:
             raise APIError(f"Unexpected error code {code}")
 
@@ -1008,6 +1021,8 @@ class APIClient:
         Raises:
             NotFoundError: The RRset to modify was not found in the current account.
             ParameterError: The RRset could not be changed to the given parameters.
+            TokenPermissionError: The token used for authentication does not have write
+                permissions to this record.
             APIError: The API returned an unexpected error.
 
         """
@@ -1027,6 +1042,8 @@ class APIClient:
             raise ParameterError(
                 f"Missing data for changing RRset {rrset} for {rtype} record {subname}.{domain}"
             )
+        elif code == 403:
+            raise TokenPermissionError("Insufficient permissions to write record")
         elif code == 422:
             raise ParameterError(f"Invalid RRset {rrset} for {rtype} record {subname}.{domain}")
         else:
@@ -1051,6 +1068,8 @@ class APIClient:
 
         Raises:
             NotFoundError: The given domain was not found in the current account.
+            TokenPermissionError: The token used for authentication does not have write
+                permissions to this record.
             APIError: The API returned an unexpected error.
 
         """
@@ -1075,6 +1094,8 @@ class APIClient:
             code, _, _ = self.query("DELETE", url)
             if code == 204:
                 pass
+            elif code == 403:
+                raise TokenPermissionError("Insufficient permissions to write record")
             elif code == 404:
                 raise NotFoundError(f"Domain {domain} not found")
             else:
@@ -1107,6 +1128,8 @@ class APIClient:
         Raises:
             ParameterError: The target RRset does not exist and `ttl` is `None` or the RRset
                 could not be changed to the given parameters.
+            TokenPermissionError: The token used for authentication does not have write
+                permissions to this record.
             APIError: The RRset could not be created or the API returned an unexpected
                 error.
 
