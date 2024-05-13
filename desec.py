@@ -793,7 +793,7 @@ class APIClient:
             ParameterError: The given domain name is incorrect or the domain could not be
                 created for another reason.
             APIError: The maximum number of domains for the current account has been
-                reached, the token used for authentication can not create domains  or the
+                reached, the token used for authentication can not create domains or the
                 API returned an unexpected error.
 
         """
