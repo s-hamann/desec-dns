@@ -418,7 +418,7 @@ class APIClient:
         except KeyError:
             content_type = None
 
-        # Process response data according content-type
+        # Process response data according to content-type.
         response_data: JsonGenericType
         if content_type == "text/dns":
             response_data = r.text
