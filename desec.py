@@ -358,6 +358,10 @@ class APIClient:
         `self._retry_limit` times, after waiting for the interval returned by the API.
         Unless another process is using the API in parallel, no more than one retry
         should be needed.
+        If the API refuses to answer the query because it would return more data than the
+        API's limit for a single response, the query is retried in pagination mode. This
+        means that the API is queries repeatedly until all results are retrieved. The
+        responses are merged and returned in a single list.
 
         Args:
             method: HTTP method to use.
@@ -388,26 +392,55 @@ class APIClient:
             params = None
             body = data
 
-        retry_after = 0
-        # Loop until we do not hit the rate limit (or we reach retry_limit + 1 iterations).
-        # Ideally, that should be only one or two iterations.
-        for _ in range(max(1, self._retry_limit + 1)):
-            # If we did hit the rate limit on the previous iteration, wait until it expires.
-            time.sleep(retry_after)
-            # Send the request.
-            r = requests.request(method, url, auth=self._token_auth, params=params, json=body)
-            if r.status_code != 429:
-                # Not rate limited. Response is handled below.
+        merged_result = []
+        next_url: str | None = url
+        r = requests.Response()  # Without this line, mypy considers r as possibly undefined.
+        while next_url is not None:
+            retry_after = 0
+            # Loop until we do not hit the rate limit (or we reach retry_limit + 1
+            # iterations). Ideally, that should be only one or two iterations.
+            for _ in range(max(1, self._retry_limit + 1)):
+                # If we did hit the rate limit on the previous iteration, wait until it
+                # expires.
+                time.sleep(retry_after)
+                # Send the request.
+                r = requests.request(
+                    method, next_url, auth=self._token_auth, params=params, json=body
+                )
+                if r.status_code != 429:
+                    # Not rate limited. Response is handled below.
+                    break
+                # Handle rate limiting. See https://desec.readthedocs.io/en/latest/rate-limits.html
+                try:
+                    retry_after = int(r.headers["Retry-After"])
+                except (KeyError, ValueError) as e:
+                    # Retry-After header is missing or not an integer. This should never
+                    # happen.
+                    raise RateLimitError(r.json()["detail"]) from e
+            else:
+                # Reached retry_limit (or it is 0) without any other response than 429.
+                raise RateLimitError(r.json()["detail"])
+
+            # Handle pagination. The API returns a "Link" header if the query requires
+            # pagination. If the status code is 400, that means we did not request
+            # pagination, but should have done so.
+            # In this case, we redo the request using the "fist" URL from the "Link" header.
+            # Otherwise, we use the "next" URL to get the next set of results.
+            # Reference: https://desec.readthedocs.io/en/latest/dns/rrsets.html#pagination
+            if "Link" in r.headers:
+                if r.status_code == 400:
+                    # Pagination is required. The "first" URL points to the starting point.
+                    links = self.parse_links(r.headers["Link"])
+                    next_url = links["first"]
+                else:
+                    # We got partial results from pagination. Merge them with the results we
+                    # already have and go on with the "next" URL (if any).
+                    merged_result.extend(r.json())
+                    links = self.parse_links(r.headers["Link"])
+                    next_url = links.get("next")
+            else:
+                # No pagination -> no further requests.
                 break
-            # Handle rate limiting. See https://desec.readthedocs.io/en/latest/rate-limits.html
-            try:
-                retry_after = int(r.headers["Retry-After"])
-            except (KeyError, ValueError) as e:
-                # Retry-After header is missing or not an integer. This should never happen.
-                raise RateLimitError(r.json()["detail"]) from e
-        else:
-            # Reached retry_limit (or it is 0) without any other response than 429.
-            raise RateLimitError(r.json()["detail"])  # type: ignore[possibly-undefined]
 
         if r.status_code == 401:  # type: ignore[possibly-undefined]
             raise AuthenticationError()
@@ -423,10 +456,14 @@ class APIClient:
         if content_type == "text/dns":
             response_data = r.text
         elif content_type == "application/json":
-            try:
-                response_data = r.json()
-            except ValueError:
-                response_data = None
+            if merged_result:
+                # Merged results from paginated queries don't need further processing.
+                response_data = merged_result
+            else:
+                try:
+                    response_data = r.json()
+                except ValueError:
+                    response_data = None
         else:
             response_data = None
         return (r.status_code, r.headers, response_data)
@@ -869,10 +906,6 @@ class APIClient:
 
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#retrieving-all-rrsets-in-a-zone
 
-        If there are more RRsets that the API returns in a single response, it is queried
-        repeatedly until all records are retrieved. They are returned by this method in a
-        single list.
-
         Args:
             domain: The name of the domain to query.
             rtype: Return only records of this DNS record type. `None` returns records of
@@ -894,17 +927,6 @@ class APIClient:
         code, headers, data = self.query("GET", url, {"subname": subname, "type": rtype})
         if code == 200:
             return t.cast(list[JsonRRsetType], data)
-        elif code == 400 and "Link" in headers:
-            result: list[JsonRRsetType]
-            result = []
-            links = self.parse_links(headers["Link"])
-            url = links["first"]
-            while url is not None:
-                code, headers, data = self.query("GET", url)
-                result += t.cast(list[JsonRRsetType], data)
-                links = self.parse_links(headers["Link"])
-                url = links.get("next")
-            return result
         elif code == 404:
             raise NotFoundError(f"Domain {domain} not found")
         else:
