@@ -184,6 +184,7 @@ class ExitCode(IntEnum):
     """Error codes use by the CLI tool and API related exceptions."""
 
     OK = 0
+    GENERIC_ERROR = 1
     INVALID_PARAMETERS = 3
     API = 4
     AUTH = 5
@@ -193,46 +194,109 @@ class ExitCode(IntEnum):
     PERMISSION = 9
 
 
-class APIError(Exception):
-    """Exception for errors returned by the API."""
+class DesecClientError(Exception):
+    """Exception for all errors within the client."""
+
+    error_code = ExitCode.GENERIC_ERROR
+
+
+class ParameterCheckError(DesecClientError):
+    """Exception for parameter consistency check errors."""
+
+    error_code = ExitCode.INVALID_PARAMETERS
+
+
+class TLSACheckError(DesecClientError):
+    """Exception for TLSA record setup consistency check errors."""
+
+    error_code = ExitCode.TLSA_CHECK
+
+
+class APIError(DesecClientError):
+    """Exception for errors returned by the API.
+
+    If initialized with a HTTP response, an attempt is made to parse error information from
+    the response and include it in the string representation of this exception, replacing
+    the `{detail}` placeholder in the message template.
+
+    Args:
+        response: HTTP response from the deSEC API that caused this exception.
+
+    """
 
     error_code = ExitCode.API
+    message_template = "Unexpected error code {code}: {detail}"
+
+    def __init__(self, response: requests.Response):
+        self._response = response
+
+    def __str__(self) -> str:
+        """Return a string representation of this exception.
+
+        The formatting is based on the message template and takes the HTTP response into
+        account.
+        The message template may contain the following placeholders:
+        * `code`: Replaced by the HTTP status code.
+        * `detail`: Replaced by the error message from the HTTP response, if it can be
+            parsed.
+
+        Returns:
+            A human-readable text representation of the error condition.
+
+        """
+        if self._response.headers["Content-Type"] == "application/json":
+            try:
+                detail = t.cast(dict[t.Literal["detail"], str], self._response.json())["detail"]
+            except KeyError:
+                detail = ""
+                for attribute, messages in self._response.json().items():
+                    detail += attribute + ":\n  " + "  \n".join(messages) + "\n"
+                detail = detail.rstrip()
+        else:
+            detail = self._response.text
+        return self.message_template.format(code=self._response.status_code, detail=detail)
 
 
 class AuthenticationError(APIError):
     """Exception for authentication failure."""
 
     error_code = ExitCode.AUTH
+    message_template = "Authentication error: {detail}"
 
 
 class NotFoundError(APIError):
     """Exception when data can not be found."""
 
     error_code = ExitCode.NOT_FOUND
+    message_template = "{detail}"
 
 
 class ParameterError(APIError):
     """Exception for invalid parameters, such as DNS records."""
 
     error_code = ExitCode.INVALID_PARAMETERS
+    message_template = "Invalid parameter(s):\n{detail}"
 
 
-class TLSACheckError(APIError):
-    """Exception for TLSA record setup sanity check errors."""
+class ConflictError(APIError):
+    """Exception for conflicts returned by the API."""
 
-    error_code = ExitCode.TLSA_CHECK
+    error_code = ExitCode.INVALID_PARAMETERS
+    message_template = "Conflict:\n{detail}"
 
 
 class RateLimitError(APIError):
     """Exception for API rate limits."""
 
     error_code = ExitCode.RATE_LIMIT
+    message_template = "Rate limited: {detail}"
 
 
 class TokenPermissionError(APIError):
     """Exception for API insufficient token permissions."""
 
     error_code = ExitCode.PERMISSION
+    message_template = "Restricted token: {detail}"
 
 
 class TokenAuth(requests.auth.AuthBase):
@@ -279,8 +343,8 @@ class TLSAField:
         self._value = int(value)
         try:
             self.valid_values[self._value]
-        except IndexError as ex:
-            raise ValueError(f"Invalid type {value} for {self.__class__}") from ex
+        except IndexError as e:
+            raise ValueError(f"Invalid type {value} for {self.__class__}") from e
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, int):
@@ -336,19 +400,19 @@ class APIClient:
         method: t.Literal["DELETE", "GET"],
         url: str,
         data: t.Mapping[str, str | int | float | bool | None] | None = None,
-    ) -> tuple[int, requests.structures.CaseInsensitiveDict[str], JsonGenericType]: ...
+    ) -> JsonGenericType | str: ...
 
     @t.overload
     def query(
         self, method: t.Literal["PATCH", "POST", "PUT"], url: str, data: JsonGenericType = None
-    ) -> tuple[int, requests.structures.CaseInsensitiveDict[str], JsonGenericType]: ...
+    ) -> JsonGenericType | str: ...
 
     def query(
         self,
         method: t.Literal["DELETE", "GET", "PATCH", "POST", "PUT"],
         url: str,
         data: JsonGenericType = None,
-    ) -> tuple[int, requests.structures.CaseInsensitiveDict[str], JsonGenericType]:
+    ) -> JsonGenericType | str:
         """Query the API.
 
         This method handles low-level queries to the deSEC API and should not be used
@@ -372,17 +436,27 @@ class APIClient:
                 structures.
 
         Returns:
-            A tuple containing the HTTP response status code, the response headers and the
-            response body.
+            The response body.
             If the response body contains JSON data, it is parsed into the respective Python
             data structures.
-            If the response body is empty, `None` is returned in the third tuple element.
+            If the response body is empty, `None` is returned.
 
         Raises:
-            RateLimitError: The request hit the API's rate limit. Retries up to the
-                configured limit were made, but also hit the rate limit.
-            AuthenticationError: The supplied authentication token is not valid for this
-                query (e.g. the domain is not managed by this account).
+            ParameterError: The API returned status code 400 (Bad Request).
+                Request parameters were incorrect or invalid.
+            AuthenticationError: The API returned status code 401 (Unauthorized).
+                The supplied authentication token is not valid for this query (e.g. the
+                domain is not managed by this account).
+            TokenPermissionError: The API returned status code 403 (Forbidden).
+                The requested operation is not allowed for the given token (or account).
+            NotFoundError: The API returned status code (Not Found).
+                The object to operate on was not found (e.g. the domain or RRset).
+            ConflictError: The API returned status code 409 (Conflict).
+                The requested operation conflicts with existing data or a deSEC policy.
+            RateLimitError: The API returned status code 429 (Too Many Requests).
+                The request hit the API's rate limit. Retries up to the configured limit
+                were made, but also hit the rate limit.
+            APIError: The API returned an unexpected error.
 
         """
         if method == "GET" or method == "DELETE":
@@ -416,10 +490,10 @@ class APIClient:
                 except (KeyError, ValueError) as e:
                     # Retry-After header is missing or not an integer. This should never
                     # happen.
-                    raise RateLimitError(r.json()["detail"]) from e
+                    raise RateLimitError(response=r) from e
             else:
                 # Reached retry_limit (or it is 0) without any other response than 429.
-                raise RateLimitError(r.json()["detail"])
+                raise RateLimitError(response=r)
 
             # Handle pagination. The API returns a "Link" header if the query requires
             # pagination. If the status code is 400, that means we did not request
@@ -442,8 +516,18 @@ class APIClient:
                 # No pagination -> no further requests.
                 break
 
-        if r.status_code == 401:  # type: ignore[possibly-undefined]
-            raise AuthenticationError()
+        if r.status_code == 400:
+            raise ParameterError(response=r)
+        elif r.status_code == 401:
+            raise AuthenticationError(response=r)
+        elif r.status_code == 403:
+            raise TokenPermissionError(response=r)
+        elif r.status_code == 404:
+            raise NotFoundError(response=r)
+        elif r.status_code == 409:
+            raise ConflictError(response=r)
+        elif r.status_code >= 400:
+            raise APIError(response=r)
 
         # Get Header: Content-Type
         try:
@@ -466,7 +550,7 @@ class APIClient:
                     response_data = None
         else:
             response_data = None
-        return (r.status_code, r.headers, response_data)
+        return response_data
 
     def parse_links(self, links: str) -> dict[str, str]:
         """Parse `Link:` response header used for pagination.
@@ -505,19 +589,15 @@ class APIClient:
             values are not included, as the API does not return them.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
                 "manage_tokens" attribute.
             APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/"
-        code, _, data = self.query("GET", url)
-        if code == 200:
-            return t.cast(list[JsonTokenType], data)
-        elif code == 403:
-            raise TokenPermissionError("Insufficient permissions to manage tokens")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        data = self.query("GET", url)
+        return t.cast(list[JsonTokenType], data)
 
     def create_token(
         self, name: str = "", manage_tokens: bool | None = None
@@ -535,6 +615,7 @@ class APIClient:
             token value itself.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
                 "manage_tokens" attribute.
             APIError: The API returned an unexpected error.
@@ -545,13 +626,8 @@ class APIClient:
         request_data = {"name": name}
         if manage_tokens is not None:
             request_data["perm_manage_tokens"] = manage_tokens
-        code, _, data = self.query("POST", url, request_data)
-        if code == 201:
-            return t.cast(JsonTokenSecretType, data)
-        elif code == 403:
-            raise TokenPermissionError("Insufficient permissions to manage tokens")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        data = self.query("POST", url, request_data)
+        return t.cast(JsonTokenSecretType, data)
 
     def modify_token(
         self, token_id: str, name: str | None = None, manage_tokens: bool | None = None
@@ -571,6 +647,7 @@ class APIClient:
             token value itself.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
                 "manage_tokens" attribute.
             APIError: The API returned an unexpected error.
@@ -583,13 +660,8 @@ class APIClient:
             request_data["name"] = name
         if manage_tokens is not None:
             request_data["perm_manage_tokens"] = manage_tokens
-        code, _, data = self.query("PATCH", url, request_data)
-        if code == 200:
-            return t.cast(JsonTokenType, data)
-        elif code == 403:
-            raise TokenPermissionError("Insufficient permissions to manage tokens")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        data = self.query("PATCH", url, request_data)
+        return t.cast(JsonTokenType, data)
 
     def delete_token(self, token_id: str) -> None:
         """Delete an authentication token.
@@ -600,19 +672,14 @@ class APIClient:
             token_id: The unique id of the token to delete.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
                 "manage_tokens" attribute.
             APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/"
-        code, _, data = self.query("DELETE", url)
-        if code == 204:
-            pass
-        elif code == 403:
-            raise TokenPermissionError("Insufficient permissions to manage tokens")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        _ = self.query("DELETE", url)
 
     def list_token_policies(self, token_id: str) -> list[JsonTokenPolicyType]:
         """Return a list of all policies for the given token.
@@ -627,19 +694,15 @@ class APIClient:
             dictionary containing all available policy data.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
                 "manage_tokens" attribute.
             APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/"
-        code, _, data = self.query("GET", url)
-        if code == 200:
-            return t.cast(list[JsonTokenPolicyType], data)
-        elif code == 403:
-            raise TokenPermissionError("Insufficient permissions to manage tokens")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        data = self.query("GET", url)
+        return t.cast(list[JsonTokenPolicyType], data)
 
     def add_token_policy(
         self,
@@ -665,10 +728,12 @@ class APIClient:
             A dictionary containing all data of the newly created token policy.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
                 "manage_tokens" attribute.
-            APIError: There is a conflicting policy for this token, domain, subname
-                and type or the API returned an unexpected error.
+            ConflictError: There is a conflicting policy for this token, domain, subname
+                and type.
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/"
@@ -679,15 +744,8 @@ class APIClient:
             "type": rtype,
             "perm_write": perm_write,
         }
-        code, _, data = self.query("POST", url, request_data)
-        if code == 201:
-            return t.cast(JsonTokenPolicyType, data)
-        elif code == 403:
-            raise TokenPermissionError("Insufficient permissions to manage tokens")
-        elif code == 409:
-            raise APIError("A conflicting policy exists")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        data = self.query("POST", url, request_data)
+        return t.cast(JsonTokenPolicyType, data)
 
     def modify_token_policy(
         self,
@@ -718,10 +776,12 @@ class APIClient:
             A dictionary containing all data of the modified token policy.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
                 "manage_tokens" attribute.
-            APIError: There is a conflicting policy for this token, domain, subname
-                and type or the API returned an unexpected error.
+            ConflictError: There is a conflicting policy for this token, domain, subname
+                and type.
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
@@ -735,15 +795,8 @@ class APIClient:
             request_data["type"] = rtype
         if perm_write is not None:
             request_data["perm_write"] = perm_write
-        code, _, data = self.query("PATCH", url, request_data)
-        if code == 200:
-            return t.cast(JsonTokenPolicyType, data)
-        elif code == 403:
-            raise TokenPermissionError("Insufficient permissions to manage tokens")
-        elif code == 409:
-            raise APIError("A conflicting policy exists")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        data = self.query("PATCH", url, request_data)
+        return t.cast(JsonTokenPolicyType, data)
 
     def delete_token_policy(self, token_id: str, policy_id: str) -> None:
         """Delete an existing policy for the given token.
@@ -755,19 +808,14 @@ class APIClient:
             policy_id: The unique id of the policy to delete.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
                 "manage_tokens" attribute.
             APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
-        code, _, data = self.query("DELETE", url)
-        if code == 204:
-            pass
-        elif code == 403:
-            raise TokenPermissionError("Insufficient permissions to manage tokens")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        _ = self.query("DELETE", url)
 
     def list_domains(self) -> list[str]:
         """Return a list of all registered domains.
@@ -778,15 +826,13 @@ class APIClient:
             A list of all registered domain names for the current account.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/domains/"
-        code, _, data = self.query("GET", url)
-        if code == 200:
-            return [domain["name"] for domain in t.cast(list[JsonDomainType], data)]
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        data = self.query("GET", url)
+        return [domain["name"] for domain in t.cast(list[JsonDomainType], data)]
 
     def domain_info(self, domain: str) -> JsonDomainWithKeysType:
         """Return basic information about a domain.
@@ -801,18 +847,14 @@ class APIClient:
             information.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             NotFoundError: The given domain was not found in the current account.
             APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/domains/{domain}/"
-        code, _, data = self.query("GET", url)
-        if code == 200:
-            return t.cast(JsonDomainWithKeysType, data)
-        elif code == 404:
-            raise NotFoundError(f"Domain {domain} not found")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        data = self.query("GET", url)
+        return t.cast(JsonDomainWithKeysType, data)
 
     def new_domain(self, domain: str) -> JsonDomainWithKeysType:
         """Create a new domain.
@@ -827,29 +869,19 @@ class APIClient:
             DNSSEC key information.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             ParameterError: The given domain name is incorrect or the domain could not be
                 created for another reason.
-            APIError: The maximum number of domains for the current account has been
-                reached, the token used for authentication can not create domains or the
-                API returned an unexpected error.
+            TokenPermissionError: The token used for authentication can not create domains
+                or the maximum number of domains for the current account has been reached.
+            ConflictError: The domain name conflicts with an existing domain or is
+                disallowed by policy.
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/domains/"
-        code, _, data = self.query("POST", url, data={"name": domain})
-        if code == 201:
-            return t.cast(JsonDomainWithKeysType, data)
-        elif code == 400:
-            raise ParameterError(f"Malformed domain name {domain}")
-        elif code == 403:
-            try:
-                message = t.cast(dict[t.Literal["detail"], str], data)["detail"]
-            except KeyError:
-                message = "Forbidden"
-            raise APIError(message)
-        elif code == 409:
-            raise ParameterError(f"Could not create domain {domain} ({data})")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        data = self.query("POST", url, data={"name": domain})
+        return t.cast(JsonDomainWithKeysType, data)
 
     def delete_domain(self, domain: str) -> None:
         """Delete a domain.
@@ -860,19 +892,14 @@ class APIClient:
             domain: The name of the domain to delete.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have write
                 permissions to the domain.
             APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/domains/{domain}/"
-        code, _, data = self.query("DELETE", url)
-        if code == 204:
-            pass
-        elif code == 403:
-            raise TokenPermissionError("Insufficient permissions to write domain")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        _ = self.query("DELETE", url)
 
     def export_zonefile_domain(self, domain: str) -> str:
         """Export a domain as a zonefile.
@@ -891,13 +918,8 @@ class APIClient:
 
         """
         url = f"{API_BASE_URL}/domains/{domain}/zonefile/"
-        code, _, data = self.query("GET", url)
-        if code == 200:
-            return t.cast(str, data)
-        elif code == 404:
-            raise NotFoundError(f"Domain {domain} not found")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        data = self.query("GET", url)
+        return t.cast(str, data)
 
     def get_records(
         self, domain: str, rtype: DnsRecordTypeType | None = None, subname: str | None = None
@@ -918,19 +940,15 @@ class APIClient:
             dictionary containing all data and metadata of this RRset.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             NotFoundError: The given domain was not found in the current account.
             APIError: The API returned an unexpected error.
 
         """
         url: str | None
         url = f"{API_BASE_URL}/domains/{domain}/rrsets/"
-        code, headers, data = self.query("GET", url, {"subname": subname, "type": rtype})
-        if code == 200:
-            return t.cast(list[JsonRRsetType], data)
-        elif code == 404:
-            raise NotFoundError(f"Domain {domain} not found")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        data = self.query("GET", url, {"subname": subname, "type": rtype})
+        return t.cast(list[JsonRRsetType], data)
 
     def add_record(
         self, domain: str, rtype: DnsRecordTypeType, subname: str, rrset: t.Sequence[str], ttl: int
@@ -953,30 +971,19 @@ class APIClient:
             A dictionary containing all data and metadata of the new RRset.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             NotFoundError: The given domain was not found in the current account.
-            ParameterError: The RRset is invalid.
+            ParameterError: The RRset is invalid or conflicts with an existing RRset.
             TokenPermissionError: The token used for authentication does not have write
                 permissions to this record.
-            APIError: The RRset could not be created or the API returned an unexpected
-                error.
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/domains/{domain}/rrsets/"
-        code, _, data = self.query(
+        data = self.query(
             "POST", url, {"subname": subname, "type": rtype, "records": rrset, "ttl": ttl}
         )
-        if code == 201:
-            return t.cast(JsonRRsetType, data)
-        elif code == 404:
-            raise NotFoundError(f"Domain {domain} not found")
-        elif code == 422:
-            raise ParameterError(f"Invalid RRset {rrset} for {rtype} record {subname}.{domain}")
-        elif code == 400:
-            raise APIError(f"Could not create RRset {rrset} for {rtype} record {subname}.{domain}")
-        elif code == 403:
-            raise TokenPermissionError("Insufficient permissions to write record")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        return t.cast(JsonRRsetType, data)
 
     def update_bulk_record(
         self, domain: str, rrset_list: t.Sequence[JsonRRsetWritableType], exclusive: bool = False
@@ -991,8 +998,10 @@ class APIClient:
             exclusive: If `True`, all DNS records not in `rrset_list` are removed.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             NotFoundError: The given domain was not found in the current account.
-            APIError: The bulk operation failed or the API returned an unexpected error.
+            ParameterError: The bulk operation failed.
+            APIError: The API returned an unexpected error.
 
         """
         url = f"{API_BASE_URL}/domains/{domain}/rrsets/"
@@ -1006,16 +1015,8 @@ class APIClient:
                 if (r["subname"], r["type"]) not in existing_records:
                     rrset_list.append({"subname": r["subname"], "type": r["type"], "records": []})
 
-        code, _, data = self.query("PATCH", url, t.cast(JsonGenericType, rrset_list))
-
-        if code == 200:
-            return t.cast(list[JsonRRsetType], data)
-        elif code == 400:
-            raise APIError(f"Could not create RRsets. Errors: {data}")
-        elif code == 404:
-            raise NotFoundError(f"Domain {domain} not found")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        data = self.query("PATCH", url, t.cast(JsonGenericType, rrset_list))
+        return t.cast(list[JsonRRsetType], data)
 
     def change_record(
         self,
@@ -1041,6 +1042,7 @@ class APIClient:
             A dictionary containing all data and metadata of the modified RRset.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             NotFoundError: The RRset to modify was not found in the current account.
             ParameterError: The RRset could not be changed to the given parameters.
             TokenPermissionError: The token used for authentication does not have write
@@ -1055,21 +1057,8 @@ class APIClient:
             request_data["records"] = rrset
         if ttl:
             request_data["ttl"] = ttl
-        code, _, data = self.query("PATCH", url, data=request_data)
-        if code == 200:
-            return t.cast(JsonRRsetType, data)
-        elif code == 404:
-            raise NotFoundError(f"RRset {rrset} for {rtype} record {subname}.{domain} not found")
-        elif code == 400:
-            raise ParameterError(
-                f"Missing data for changing RRset {rrset} for {rtype} record {subname}.{domain}"
-            )
-        elif code == 403:
-            raise TokenPermissionError("Insufficient permissions to write record")
-        elif code == 422:
-            raise ParameterError(f"Invalid RRset {rrset} for {rtype} record {subname}.{domain}")
-        else:
-            raise APIError(f"Unexpected error code {code}")
+        data = self.query("PATCH", url, data=request_data)
+        return t.cast(JsonRRsetType, data)
 
     def delete_record(
         self,
@@ -1089,6 +1078,7 @@ class APIClient:
             rrset: A list of record contents to delete. `None` deletes the whole RRset.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             NotFoundError: The given domain was not found in the current account.
             TokenPermissionError: The token used for authentication does not have write
                 permissions to this record.
@@ -1113,15 +1103,7 @@ class APIClient:
         else:
             # Nothing should be kept, delete the whole RRset
             url = f"{API_BASE_URL}/domains/{domain}/rrsets/{subname}.../{rtype}/"
-            code, _, _ = self.query("DELETE", url)
-            if code == 204:
-                pass
-            elif code == 403:
-                raise TokenPermissionError("Insufficient permissions to write record")
-            elif code == 404:
-                raise NotFoundError(f"Domain {domain} not found")
-            else:
-                raise APIError(f"Unexpected error code {code}")
+            _ = self.query("DELETE", url)
 
     def update_record(
         self,
@@ -1148,12 +1130,12 @@ class APIClient:
             A dictionary containing all data and metadata of the modified or created RRset.
 
         Raises:
+            AuthenticationError: The token used for authentication is invalid.
             ParameterError: The target RRset does not exist and `ttl` is `None` or the RRset
                 could not be changed to the given parameters.
             TokenPermissionError: The token used for authentication does not have write
                 permissions to this record.
-            APIError: The RRset could not be created or the API returned an unexpected
-                error.
+            APIError: The API returned an unexpected error.
 
         """
         data = self.get_records(domain, rtype, subname)
@@ -1212,21 +1194,21 @@ def sanitize_records(rtype: DnsRecordTypeType, subname: str, rrset: list[str]) -
         The `rrset` parameter, possibly with applied fixes.
 
     Raises:
-        ParameterError: An unfixable error was found.
+        ParameterCheckError: An unfixable error was found.
 
     """
     if rtype == "CNAME" and rrset and len(rrset) > 1:
         # Multiple CNAME records in the same rrset are not legal.
-        raise ParameterError("Multiple CNAME records are not allowed.")
+        raise ParameterCheckError("Multiple CNAME records are not allowed.")
     if rtype in ("CNAME", "MX", "NS") and rrset:
         # CNAME and MX records must end in a .
         rrset = [r + "." if r[-1] != "." else r for r in rrset]
     if rtype == "CNAME" and subname == "":
         # CNAME in the zone apex can break the zone
-        raise ParameterError("CNAME records in the zone apex are not allowed.")
+        raise ParameterCheckError("CNAME records in the zone apex are not allowed.")
     if rtype == "NS" and rrset and any(["*" in r for r in rrset]):
         # Wildcard NS records do not play well with DNSSEC
-        raise ParameterError("Wildcard NS records are not allowed.")
+        raise ParameterCheckError("Wildcard NS records are not allowed.")
     if rtype == "TXT" and rrset:
         # TXT records must be in ""
         rrset = [f'"{r}"' if r[0] != '"' or r[-1] != '"' else r for r in rrset]
@@ -2051,10 +2033,7 @@ def main() -> None:
                 )
                 print_rrsets(rrsets_result)
 
-    except AuthenticationError as e:
-        print("Invalid token.")
-        sys.exit(e.error_code)
-    except APIError as e:
+    except DesecClientError as e:
         print(str(e))
         sys.exit(e.error_code)
 
