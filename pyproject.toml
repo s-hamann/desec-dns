@@ -1,3 +1,32 @@
+[tool.poetry]
+name = "desec-dns"
+version = "0.0.0"
+description = "CLI for desec.io's http api."
+packages = [{ include = "desec.py" }]
+authors = ["Sebastian Hamann <code@ares-macrotechnology.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.9"
+requests = ">=2.0.0"
+cryptography = { version = ">=1.8", optional = true }
+dnspython = { version = ">=2.0.0", optional = true }
+
+[tool.poetry.extras]
+tlsa = ["cryptography"]
+zonefiles = ["dnspython"]
+all = ["cryptography", "dnspython"]
+
+[tool.poetry.scripts]
+desec = "desec:main"
+
+[tool.poetry.group.dev.dependencies]
+ruff = ">=0.4.5"
+mypy = ">=1.10.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.ruff]
 line-length = 99
 
