@@ -212,6 +212,12 @@ class TLSACheckError(DesecClientError):
     error_code = ExitCode.TLSA_CHECK
 
 
+class APIExpectationError(DesecClientError):
+    """Exception for errors that are caused by unmet expectations in API responses."""
+
+    error_code = ExitCode.GENERIC_ERROR
+
+
 class APIError(DesecClientError):
     """Exception for errors returned by the API.
 
@@ -565,13 +571,16 @@ class APIClient:
             `rel` attribute. In other words, the "next" attribute references the URL that
             returns the next portion of the requested data.
 
+        Raises:
+            APIExpectationError: Parsing the given `Link` response header failed.
+
         """
         mapping = {}
         for link in links.split(", "):
             _url, label = link.split("; ")
             m = re.search('rel="(.*)"', label)
             if m is None:
-                raise APIError("Unexpected format in Link header")
+                raise APIExpectationError("Unexpected format in Link header")
             label = m.group(1)
             _url = _url[1:-1]
             assert label not in mapping
