@@ -1,0 +1,38 @@
+---
+name: Code Quality
+
+on:
+  push:
+    paths:
+      - '**.py'
+    branches:
+      - main
+  pull_request:
+    paths:
+      - '**.py'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      RUFF_OUTPUT_FORMAT: github
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          check-latest: true
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install package and dependencies
+        run: pip install -e .'[all]'
+      - name: Install linters
+        run: pip install mypy ruff
+      - name: Register matchers
+        run: for matcher in .github/workflows/matchers/*.json; do echo ::add-matcher::"${matcher}"; done
+      - name: Check types
+        run: mypy --install-types --non-interactive --show-column-numbers .
+      - name: Check code style
+        run: ruff check .
+      - name: Check code formatting
+        run: ruff format --check .
