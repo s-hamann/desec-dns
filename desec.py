@@ -1131,8 +1131,8 @@ class APIClient:
 
         Raises:
             AuthenticationError: The token used for authentication is invalid.
-            ParameterError: The target RRset does not exist and `ttl` is `None` or the RRset
-                could not be changed to the given parameters.
+            ParameterCheckError: The target RRset does not exist and `ttl` is `None`.
+            ParameterError: The RRset could not be changed to the given parameters.
             TokenPermissionError: The token used for authentication does not have write
                 permissions to this record.
             APIError: The API returned an unexpected error.
@@ -1142,7 +1142,9 @@ class APIClient:
         if not data:
             # There is no entry, simply create a new one
             if ttl is None:
-                raise ParameterError(f"Missing TTL for new {rtype} record {subname}.{domain}.")
+                raise ParameterCheckError(
+                    f"Missing TTL for new {rtype} record {subname}.{domain}."
+                )
             return self.add_record(domain, rtype, subname, rrset, ttl)
         else:
             # Update the existing records with the given ones
