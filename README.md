@@ -10,7 +10,8 @@ Requirements
 
 * Python 3.9+
 * [requests](https://github.com/requests/requests)
-* [cryptography](https://github.com/pyca/cryptography/) (optional, for high-level management of TLSA records)
+* [cryptography](https://github.com/pyca/cryptography/) (optional, for high-level
+  management of TLSA records)
 * [dnspython](https://www.dnspython.org/) (optional, for parsing zone files)
 
 Usage
@@ -21,7 +22,7 @@ Most subcommand require further parameters to work.
 They are described by the usage information of each individual subcommand.
 
 ```
-usage: desec.py [-h] [--token TOKEN | --token-file TOKEN_FILE] action ...
+usage: desec [-h] [--token TOKEN | --token-file TOKEN_FILE] [--non-blocking] [--blocking] [--debug-http] action ...
 
 A simple deSEC.io API client
 
@@ -67,6 +68,7 @@ optional arguments:
                         appropriate error.
   --blocking            When the API's rate limit is reached, wait and retry
                         the request. This is the default behaviour.
+  --debug-http          Print details about http requests / responses.
 ```
 
 Related Work
