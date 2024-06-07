@@ -22,6 +22,7 @@ desec = "desec:main"
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.4.5"
 mypy = ">=1.10.0"
+types-requests = ">=2.32.0.20240602"
 
 [build-system]
 requires = ["poetry-core"]
