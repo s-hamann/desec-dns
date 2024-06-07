@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import re
 import sys
@@ -396,9 +397,37 @@ class APIClient:
 
     """
 
-    def __init__(self, token: str, retry_limit: int = 3):
+    def __init__(
+        self,
+        token: str,
+        retry_limit: int = 3,
+        logger: logging.Logger = logging.getLogger("desec.client"),
+    ):
         self._token_auth = TokenAuth(token)
         self._retry_limit = retry_limit
+        self.logger = logger
+
+    @staticmethod
+    def _get_response_content(response: requests.Response) -> JsonGenericType:
+        """Safely get content from a response.
+
+        Args:
+            response: requests Response object
+
+        Returns:
+            If the response body contains JSON data, it is parsed into the respective
+            Python data structures. Otherwise the response body as a string.
+        """
+        content_type = response.headers.get("Content-Type")
+        if content_type == "text/dns":
+            return response.text
+        elif content_type == "application/json":
+            try:
+                return response.json()
+            except ValueError:
+                return response.text
+        else:
+            return response.text
 
     @t.overload
     def query(
@@ -484,8 +513,19 @@ class APIClient:
                 # expires.
                 time.sleep(retry_after)
                 # Send the request.
+                self.logger.debug(
+                    f"Request: {method} {url}",
+                    extra=dict(method=method, url=url, params=params, body=body),
+                )
                 r = requests.request(
                     method, next_url, auth=self._token_auth, params=params, json=body
+                )
+                self.logger.debug(
+                    f"Response: {r.status_code} for {method} {url}",
+                    extra=dict(
+                        response_code=r.status_code,
+                        response_body=self._get_response_content(r),
+                    ),
                 )
                 if r.status_code != 429:
                     # Not rate limited. Response is handled below.
@@ -1420,6 +1460,47 @@ def tlsa_record(
     return f"{int(usage)} {int(selector)} {int(match_type)} {hex_data}"
 
 
+class CliClientFormatter(logging.Formatter):
+    """Pretty prints requests and response logs for CLI usage."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        """Format a log record for cli usage.
+
+        Args:
+            record: Log record to format.
+
+        Returns:
+            Formatted log record as string.
+        """
+        message = record.getMessage()
+        if params := getattr(record, "params", None):
+            message += "\nParams:"
+            for k, v in params.items():
+                message += f"{k}: {v}"
+        if body := getattr(record, "body", None):
+            message += "\nBody:\n"
+            message += json.dumps(body, indent=2)
+        if response_body := getattr(record, "response_body", None):
+            message += "\n"
+            message += json.dumps(response_body, indent=2)
+            message += "\n"
+        return message
+
+
+def configure_cli_logging(level: int) -> None:
+    """Set up logging configuration when using the module as a command-line interface.
+
+    Args:
+        level: Logging level to set for desec.client logger.
+    """
+    http_handler = logging.StreamHandler(stream=sys.stderr)
+    http_formatter = CliClientFormatter()
+    http_handler.setFormatter(http_formatter)
+    http_logger = logging.getLogger("desec.client")
+    http_logger.addHandler(http_handler)
+    http_logger.setLevel(level)
+
+
 def main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="A simple deSEC.io API client")
@@ -1450,6 +1531,9 @@ def main() -> None:
         "This is the default behaviour.",
     )
 
+    parser.add_argument(
+        "--debug-http", action="store_true", help="Print details about http requests / responses."
+    )
     p = p_action.add_parser("list-tokens", help="list all authentication tokens")
 
     p = p_action.add_parser("create-token", help="create and return a new authentication token")
@@ -1832,6 +1916,7 @@ def main() -> None:
 
     arguments = parser.parse_args()
     del p_action, g, p, parser
+    configure_cli_logging(level=logging.DEBUG if arguments.debug_http else logging.INFO)
 
     if arguments.token:
         token = arguments.token
