@@ -69,6 +69,28 @@ optional arguments:
                         the request. This is the default behaviour.
 ```
 
+Installation
+============
+
+Currently, the only way to install / use desec-dns is from source.
+
+You can simply run `python desec.py` as-is, as long as the dependencies (see
+[above](#requirements)) are installed for your python interpreter.
+
+The package can be installed in a (virtual) environment using 
+`pip install -e ./path/to/desc-dns` or 
+`pip install git+https://github.com/s-hamann/desec-dns`. That should also make `desec` 
+available as a command (if the virtual environment is activated). Note that `desec-dns`
+is the **package name**. The **module** is called `desec`, so you need to `import desec`
+when using it as a library.
+
+You can use [poetry](https://python-poetry.org/docs/) to manage a virtual environment
+with desec installed. That is especially recommended if you want to
+[contribute](CONTRIBUTING.md). Run `poetry install --with=dev` to get all dependencies
+and necessary tools for formatting, linting, and type-checking. If you want to work on
+features that require optional dependencies, `install` the corresponding extras, e.g.:
+`poetry install --extras=tlsa` or just go for `poetry install --all-extras`.
+
 Related Work
 ============
 
