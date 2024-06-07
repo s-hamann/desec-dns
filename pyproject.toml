@@ -8,7 +8,7 @@ authors = ["Sebastian Hamann <code@ares-macrotechnology.com>"]
 [tool.poetry.dependencies]
 python = ">=3.9"
 requests = ">=2.0.0"
-cryptography = { version = ">=1.8", optional = true }
+cryptography = { version = ">=42.0.0", optional = true }
 dnspython = { version = ">=2.0.0", optional = true }
 
 [tool.poetry.extras]

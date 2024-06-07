@@ -17,7 +17,7 @@ import re
 import sys
 import time
 import typing as t
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import IntEnum
 from hashlib import sha256, sha512
 from pprint import pprint
@@ -1433,8 +1433,8 @@ def tlsa_record(
     # Do some sanity checks.
     if check:
         # Check certificate expiration.
-        if cert.not_valid_after <= datetime.utcnow():
-            raise TLSACheckError(f"Certificate expired on {cert.not_valid_after}")
+        if cert.not_valid_after_utc <= datetime.now(timezone.utc):
+            raise TLSACheckError(f"Certificate expired on {cert.not_valid_after_utc}")
         # Check is usage matches the certificate's CA status.
         is_ca_cert = cert.extensions.get_extension_for_class(x509.BasicConstraints).value.ca
         if is_ca_cert and usage not in ["PKIX-TA", "DANE-TA"]:
