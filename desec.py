@@ -866,13 +866,14 @@ class APIClient:
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
         _ = self.query("DELETE", url)
 
-    def list_domains(self) -> list[str]:
+    def list_domains(self) -> list[JsonDomainType]:
         """Return a list of all registered domains.
 
         See https://desec.readthedocs.io/en/latest/dns/domains.html#listing-domains
 
         Returns:
-            A list of all registered domain names for the current account.
+            A list of all registered domains for the current account, including basic
+            metadata.
 
         Raises:
             AuthenticationError: The token used for authentication is invalid.
@@ -881,7 +882,7 @@ class APIClient:
         """
         url = f"{API_BASE_URL}/domains/"
         data = self.query("GET", url)
-        return [domain["name"] for domain in t.cast(list[JsonDomainType], data)]
+        return t.cast(list[JsonDomainType], data)
 
     def domain_info(self, domain: str) -> JsonDomainWithKeysType:
         """Return basic information about a domain.
@@ -1974,7 +1975,7 @@ def main() -> None:
         elif arguments.action == "list-domains":
             domains_result = api_client.list_domains()
             for d in domains_result:
-                print(d)
+                print(d["name"])
 
         elif arguments.action == "domain-info":
             domain_result = api_client.domain_info(arguments.domain)
