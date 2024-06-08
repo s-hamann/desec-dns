@@ -26,6 +26,8 @@ types-requests = ">=2.32.0.20240602"
 tox = ">=4.0.0"
 pytest = ">=8.0.0"
 pytest-recording = ">=0.13.1"
+coverage = {version = ">=7.2.0", extras = ["toml"]}
+pytest-cov = ">=3.0.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -87,4 +89,23 @@ enable_error_code = [
 ]
 exclude = [
     "^tests/",
+]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.html]
+show_contexts = true
+
+[tool.coverage.json]
+show_contexts = true
+
+[tool.coverage.report]
+exclude_also = [
+    "if __name__ == [\"']__main__[\"']:",
+    "if (typing\\.|t\\.)?TYPE_CHECKING:",
+    "@(typing\\.|t\\.)?overload",
+    "raise NotImplementedError",
+    "raise APIExpectationError",
+    "except ModuleNotFoundError:",
 ]

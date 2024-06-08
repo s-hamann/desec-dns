@@ -1,2 +1,8 @@
+.coverage
+.coverage.*
 .tox/
+coverage.json
+coverage.lcov
+coverage.xml
+htmlcov/
 poetry.lock
