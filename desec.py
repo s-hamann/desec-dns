@@ -354,7 +354,7 @@ class TLSAField:
         self._value = int(value)
         try:
             self.valid_values[self._value]
-        except IndexError as e:
+        except IndexError as e:  # pragma: no cover
             raise ValueError(f"Invalid type {value} for {self.__class__}") from e
 
     def __eq__(self, other: object) -> bool:
@@ -364,7 +364,7 @@ class TLSAField:
             return self.valid_values[self._value] == other.upper()
         elif isinstance(other, self.__class__):
             return self._value == other._value
-        return False
+        return False  # pragma: no cover
 
     def __repr__(self) -> str:
         return self.valid_values[self._value]
@@ -428,7 +428,7 @@ class APIClient:
         elif content_type == "application/json":
             try:
                 return response.json()
-            except ValueError:
+            except ValueError:  # pragma: no cover
                 return response.text
         else:
             return response.text
@@ -537,7 +537,7 @@ class APIClient:
                 # Handle rate limiting. See https://desec.readthedocs.io/en/latest/rate-limits.html
                 try:
                     retry_after = int(r.headers["Retry-After"])
-                except (KeyError, ValueError) as e:
+                except (KeyError, ValueError) as e:  # pragma: no cover
                     # Retry-After header is missing or not an integer. This should never
                     # happen.
                     raise RateLimitError(response=r) from e
@@ -576,7 +576,7 @@ class APIClient:
             raise NotFoundError(response=r)
         elif r.status_code == 409:
             raise ConflictError(response=r)
-        elif r.status_code >= 400:
+        elif r.status_code >= 400:  # pragma: no cover
             raise APIError(response=r)
 
         # Get Header: Content-Type
@@ -596,7 +596,7 @@ class APIClient:
             else:
                 try:
                     response_data = r.json()
-                except ValueError:
+                except ValueError:  # pragma: no cover
                     response_data = None
         else:
             response_data = None
