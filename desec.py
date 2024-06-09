@@ -84,15 +84,15 @@ DnsRecordTypeType = t.Literal[
     "TXT",
     "URI",
 ]
-JsonGenericType = (
-    None
-    | int
-    | float
-    | str
-    | bool
-    | t.Sequence["JsonGenericType"]
-    | t.Mapping[str, "JsonGenericType"]
-)
+JsonGenericType = t.Union[
+    None,
+    int,
+    float,
+    str,
+    bool,
+    t.Sequence["JsonGenericType"],
+    t.Mapping[str, "JsonGenericType"],
+]
 
 
 class JsonTokenType(t.TypedDict):
@@ -495,7 +495,7 @@ class APIClient:
 
         """
         if method == "GET" or method == "DELETE":
-            params = t.cast(t.Mapping[str, str | int | float | bool | None] | None, data)
+            params = t.cast("t.Mapping[str, str | int | float | bool | None] | None", data)
             body = None
         else:
             params = None
