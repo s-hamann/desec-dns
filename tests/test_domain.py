@@ -1,5 +1,7 @@
 import pytest
 
+import desec
+
 
 @pytest.mark.vcr
 def test_new_domain(request, api_client, domain_name):
@@ -47,3 +49,25 @@ def test_domain_info(api_client, domain):
     domain_info = api_client.domain_info(domain)
 
     assert domain_info["name"] == domain
+
+
+@pytest.mark.vcr
+def test_new_domain_invalid_name(api_client):
+    """Test APIClient.new_domain() with invalid parameters.
+
+    Assert that an appropriate exception is raised.
+    """
+    domain = "example.internal"
+    with pytest.raises(desec.ParameterError):
+        api_client.new_domain(domain)
+
+
+@pytest.mark.vcr
+def test_domain_info_invalid(api_client):
+    """Test APIClient.domain_info() with invalid parameters.
+
+    Assert that an appropriate exception is raised.
+    """
+    domain = "not-a-valid-domain-for-this-account.test"
+    with pytest.raises(desec.NotFoundError):
+        api_client.domain_info(domain)
