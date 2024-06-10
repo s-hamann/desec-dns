@@ -34,6 +34,25 @@ def api_client():
 
 
 @pytest.fixture(scope="function")
+def new_token(api_client):
+    """Return a new API token.
+
+    All tokens created by this fixture are automatically deleted after the test.
+    """
+    created_tokens = []
+
+    def _new_token(**kwargs):
+        new_token = api_client.create_token(**kwargs)
+        created_tokens.append(new_token["id"])
+        return new_token
+
+    yield _new_token
+
+    for t in created_tokens:
+        api_client.delete_token(t)
+
+
+@pytest.fixture(scope="function")
 def domain_name(disable_recording):
     """Return a domain name.
 
