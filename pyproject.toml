@@ -109,3 +109,9 @@ exclude_also = [
     "raise APIExpectationError",
     "except ModuleNotFoundError:",
 ]
+
+[tool.coverage.paths]
+source = [
+    ".",
+    "/home/runner/work/desec-dns/desec-dns/",
+]

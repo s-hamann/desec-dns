@@ -60,3 +60,50 @@ jobs:
         run: pip install tox-gh
       - name: Run tests
         run: tox -q run
+      - name: Store code coverage data
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: .coverage.*
+
+  coverage:
+    name: Coverage
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          check-latest: true
+      - name: Install tox
+        run: pip install tox
+      - name: Get code coverage data
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+      - name: Process code coverage data
+        run: |
+          tox -q run -e coverage -- json
+          tox -q run -e coverage -- html
+      - name: Store code coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/
+      - name: Report coverage
+        run: |
+          python >> "${GITHUB_STEP_SUMMARY}" << EOC
+          import json
+          cov = json.load(open('coverage.json'))
+          def row(stats):
+              return '|'.join([str(stats[k]) for k in ('num_statements', 'missing_lines', 'num_branches', 'num_partial_branches', 'percent_covered_display')]) + '%'
+          print('Name|Stmts|Miss|Branch|BrPart|Cover')
+          print(':---|----:|---:|-----:|-----:|----:')
+          for fname, fcov in cov['files'].items():
+              print(f'{fname}|{row(fcov["summary"])}')
+          print(f'TOTAL|{row(cov["totals"])}')
+          EOC
