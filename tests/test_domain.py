@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 import desec
@@ -71,3 +73,18 @@ def test_domain_info_invalid(api_client):
     domain = "not-a-valid-domain-for-this-account.test"
     with pytest.raises(desec.NotFoundError):
         api_client.domain_info(domain)
+
+
+@pytest.mark.vcr
+def test_export_zonefile_domain(api_client, domain):
+    """Test APIClient.export_zonefile_domain() with valid parameters.
+
+    Assert that the API returns zonefile-like data for the given domain.
+    """
+    zonefile = api_client.export_zonefile_domain(domain)
+    # Assert presence of a SOA record in RFC 1035 format.
+    assert re.search(
+        rf"^{domain}\.\s+\d+\s+IN\s+SOA\s+\S+\s+\S+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+$",
+        zonefile,
+        re.MULTILINE | re.ASCII,
+    )
