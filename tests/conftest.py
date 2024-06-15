@@ -93,3 +93,28 @@ def domain(api_client, disable_recording):
     api_client.new_domain(domain)
     yield domain
     api_client.delete_domain(domain)
+
+
+@pytest.fixture(scope="function")
+def new_record(api_client, domain, request):
+    """Create an RRset in the domain and return it.
+
+    All RRsets created by this fixture are automatically deleted after the test.
+
+    Args:
+        rtype: The type of the new record.
+        subname: The subname of the new record.
+        records: The content of the new record.
+        ttl: The TTL of the new record.
+    """
+    created_records = []
+
+    def _new_record(rtype, subname, records, ttl):
+        new_record = api_client.add_record(domain, rtype, subname, records, ttl)
+        created_records.append((rtype, subname, records, ttl))
+        return new_record
+
+    yield _new_record
+
+    for r in created_records:
+        api_client.delete_record(domain, r[0], r[1])
