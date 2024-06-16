@@ -6,6 +6,41 @@ import pytest
 import desec
 
 
+def pytest_configure(config):
+    """Pytest configuration."""
+    config.addinivalue_line(
+        # Parametrized test functions may produce undesired test cases (because some
+        # combinations do not make any sense). Decorate them with
+        # @pytest.mark.uncollect_if(...) or @pytest.mark.uncollect_if(func=...)
+        # to completely ignore certain combinations, based on the return value of the
+        # (lambda) function parameter to `uncollect_if`.
+        "markers",
+        "uncollect_if(func): completely ignore certain parametrization combinations",
+    )
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_make_collect_report(collector):
+    """Implementation of the `uncollect_if` marker."""
+    outcome = yield None
+    report = outcome.get_result()
+    if report:
+        kept = []
+        for item in report.result:
+            if isinstance(item, pytest.Function):
+                m = item.get_closest_marker("uncollect_if")
+                if m:
+                    try:
+                        func = m.kwargs["func"]
+                    except KeyError:
+                        func = m.args[0]
+                    if func(**item.callspec.params):
+                        continue
+            kept.append(item)
+        report.result = kept
+        outcome.force_result(report)
+
+
 @pytest.fixture(scope="session")
 def vcr_config():
     """VCR.py configuration fixture."""
