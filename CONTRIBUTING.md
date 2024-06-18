@@ -20,7 +20,7 @@ version. If you are not, see if updating fixes the problem.
 Submitting changes
 ------------------
 
-If want to send some code or documentation changes, please submit them as a
+If you want to send some code or documentation changes, please submit them as a
 [pull request](https://github.com/s-hamann/desec-dns/pull/new).
 Please follow the coding conventions (below) and make sure all of your commits
 are atomic (one cleanly separable change per commit).
