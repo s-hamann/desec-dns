@@ -6,6 +6,22 @@ import desec
 
 
 @pytest.mark.vcr
+def test_invalid_authentication(request, api_client):
+    """Test APIClient.query() with an invalid authentication token.
+
+    Assert that an appropriate exception is raised.
+    """
+    # Define a cleanup function to ensure the authentication token of the api_client fixture
+    # is reset.
+    token_auth = api_client._token_auth
+    request.addfinalizer(lambda: setattr(api_client, "_token_auth", token_auth))
+    api_client._token_auth = desec.TokenAuth("invalid-token")
+
+    with pytest.raises(desec.AuthenticationError):
+        api_client.query("GET", f"{desec.API_BASE_URL}/domains/")
+
+
+@pytest.mark.vcr
 def test_pagination(request, api_client, domain):
     """Test APIClient.query() with pagination.
 
