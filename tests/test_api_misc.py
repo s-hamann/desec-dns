@@ -22,6 +22,23 @@ def test_invalid_authentication(request, api_client):
 
 
 @pytest.mark.vcr
+def test_invalid_authorization(request, api_client, new_token):
+    """Test APIClient.query() with an authentication token with insufficient permissions.
+
+    Assert that an appropriate exception is raised.
+    """
+    # Define a cleanup function to ensure the authentication token of the api_client fixture
+    # is reset.
+    token = new_token(manage_tokens=False)
+    token_auth = api_client._token_auth
+    request.addfinalizer(lambda: setattr(api_client, "_token_auth", token_auth))
+    api_client._token_auth = desec.TokenAuth(token["token"])
+
+    with pytest.raises(desec.TokenPermissionError):
+        api_client.query("GET", f"{desec.API_BASE_URL}/auth/tokens/")
+
+
+@pytest.mark.vcr
 def test_pagination(request, api_client, domain):
     """Test APIClient.query() with pagination.
 
