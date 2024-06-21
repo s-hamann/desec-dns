@@ -457,10 +457,12 @@ class APIClient:
         This method handles low-level queries to the deSEC API and should not be used
         directly. Prefer the more high-level methods that implement specific API functions
         instead.
+
         If the initial request hits the API's rate limit, it is retired up to
         `self._retry_limit` times, after waiting for the interval returned by the API.
         Unless another process is using the API in parallel, no more than one retry
         should be needed.
+
         If the API refuses to answer the query because it would return more data than the
         API's limit for a single response, the query is retried in pagination mode. This
         means that the API is queries repeatedly until all results are retrieved. The
