@@ -252,13 +252,17 @@ class APIError(DesecClientError):
 
         """
         if self._response.headers["Content-Type"] == "application/json":
-            try:
-                detail = t.cast(dict[t.Literal["detail"], str], self._response.json())["detail"]
-            except KeyError:
-                detail = ""
-                for attribute, messages in self._response.json().items():
-                    detail += attribute + ":\n  " + "  \n".join(messages) + "\n"
-                detail = detail.rstrip()
+            json_data = self._response.json()
+            if not isinstance(json_data, list):
+                json_data = [json_data]
+            detail = ""
+            for entry in json_data:
+                try:
+                    detail += t.cast(dict[t.Literal["detail"], str], entry)["detail"] + "\n"
+                except KeyError:
+                    for attribute, messages in entry.items():
+                        detail += attribute + ":\n  " + "  \n".join(messages) + "\n"
+            detail = detail.rstrip()
         else:
             detail = self._response.text
         return self.message_template.format(code=self._response.status_code, detail=detail)
