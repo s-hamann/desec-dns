@@ -1,0 +1,10 @@
+$ORIGIN test-suite.test.
+$TTL 3600
+@ IN CNAME prod-suite.test.
+www IN CNAME test-suite.test.
+mail  7200 IN A 192.0.2.2
+mail2 7200 IN A 192.0.2.3
+call 3600 IN ISDN 493023125000 ; valid per RFC 1183, but not supported by deSEC.io
+
+www.example.com. 3600 IN A 192.0.2.4
+call.example.com. 3600 IN ISDN 493023125000
