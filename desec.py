@@ -398,6 +398,8 @@ class APIClient:
         token: API authorization token
         retry_limit: Number of retries when hitting the API's rate limit.
             Set to 0 to disable.
+        logger: Logger instance to send HTTP debug information to. Defaults to the named
+            logger `desec.client`.
 
     """
 
@@ -410,6 +412,7 @@ class APIClient:
         self._token_auth = TokenAuth(token)
         self._retry_limit = retry_limit
         self.logger = logger
+        "Logger instance to send HTTP debug information to."
 
     @staticmethod
     def _get_response_content(response: requests.Response) -> JsonGenericType:
