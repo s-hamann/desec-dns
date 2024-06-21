@@ -1,0 +1,292 @@
+interactions:
+- request:
+    body: '{"name": "test-suite.test"}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Content-Length:
+      - '27'
+      Content-Type:
+      - application/json
+      authorization:
+      - Token XXXXXXXX
+    method: POST
+    uri: https://desec.io/api/v1/domains/
+  response:
+    body:
+      string: '{"created":"2024-01-01T00:00:00.000000Z","published":null,"name":"test-suite.test","keys":[{"dnskey":"257
+        3 13 0CHCvE3bcKfFWMuiniM0y0jDy3no7SfXV1d+ZBc1ry5u178Dz8/m2F/zQwAtLmOw4ChAfycgJVgsXs/l6B2CpA==","ds":["26360
+        13 2 6711f48e8d07904e5fe2eb5d8ac051e3174584bb5a0c99f3941783d78f0149bb","26360
+        13 4 1de5dfe2dbf9f99ac965f5b441545ce4ec052dc0994b11982d8e0765d620ce7163413b537a1e86454db6404bb6c7b50a"],"flags":257,"keytype":"csk","managed":true}],"minimum_ttl":3600,"touched":"2024-01-01T00:00:00.000000Z"}'
+    headers:
+      Allow:
+      - GET, POST, HEAD, OPTIONS
+      Cache-Control:
+      - no-cache
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '500'
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 01 Jan 2024 00:00:00 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:01 GMT
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Vary:
+      - origin
+    status:
+      code: 201
+      message: Created
+- request:
+    body: '{"name": ""}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Content-Length:
+      - '12'
+      Content-Type:
+      - application/json
+      authorization:
+      - Token XXXXXXXX
+    method: POST
+    uri: https://desec.io/api/v1/auth/tokens/
+  response:
+    body:
+      string: '{"id":"b86bc6a9-7d06-44f9-9cdd-df73fa515987","created":"2024-01-01T00:00:00.000000Z","last_used":null,"max_age":null,"max_unused_period":null,"name":"","perm_manage_tokens":false,"allowed_subnets":["0.0.0.0/0","::/0"],"is_valid":true,"token":"GWyEYyihHCb9BuhvBzvU6RqzabGX"}'
+    headers:
+      Allow:
+      - GET, POST, HEAD, OPTIONS
+      Cache-Control:
+      - no-cache
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '273'
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 01 Jan 2024 00:00:00 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:01 GMT
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Vary:
+      - origin
+    status:
+      code: 201
+      message: Created
+- request:
+    body: '{"domain": null, "subname": null, "type": null, "perm_write": false}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Content-Length:
+      - '68'
+      Content-Type:
+      - application/json
+      authorization:
+      - Token XXXXXXXX
+    method: POST
+    uri: https://desec.io/api/v1/auth/tokens/b86bc6a9-7d06-44f9-9cdd-df73fa515987/policies/rrsets/
+  response:
+    body:
+      string: '{"id":"222a4ffe-2f6d-4da5-858f-ed478957db18","domain":null,"subname":null,"type":null,"perm_write":false}'
+    headers:
+      Allow:
+      - GET, POST, HEAD, OPTIONS
+      Cache-Control:
+      - no-cache
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '105'
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 01 Jan 2024 00:00:00 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:01 GMT
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Vary:
+      - origin
+    status:
+      code: 201
+      message: Created
+- request:
+    body: '{"domain": null, "subname": "test", "type": "A", "perm_write": false}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Content-Length:
+      - '69'
+      Content-Type:
+      - application/json
+      authorization:
+      - Token XXXXXXXX
+    method: POST
+    uri: https://desec.io/api/v1/auth/tokens/b86bc6a9-7d06-44f9-9cdd-df73fa515987/policies/rrsets/
+  response:
+    body:
+      string: '{"id":"0f37038a-05f7-492a-85fc-26427b4f66fc","domain":null,"subname":"test","type":"A","perm_write":false}'
+    headers:
+      Allow:
+      - GET, POST, HEAD, OPTIONS
+      Cache-Control:
+      - no-cache
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '106'
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 01 Jan 2024 00:00:00 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:01 GMT
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Vary:
+      - origin
+    status:
+      code: 201
+      message: Created
+- request:
+    body: '{"domain": "test-suite.test", "subname": "test2", "type": null, "perm_write":
+      true}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Content-Length:
+      - '83'
+      Content-Type:
+      - application/json
+      authorization:
+      - Token XXXXXXXX
+    method: PATCH
+    uri: https://desec.io/api/v1/auth/tokens/b86bc6a9-7d06-44f9-9cdd-df73fa515987/policies/rrsets/0f37038a-05f7-492a-85fc-26427b4f66fc/
+  response:
+    body:
+      string: '{"id":"0f37038a-05f7-492a-85fc-26427b4f66fc","domain":"test-suite.test","subname":"test2","type":null,"perm_write":true}'
+    headers:
+      Allow:
+      - GET, PUT, PATCH, DELETE, HEAD, OPTIONS
+      Cache-Control:
+      - no-cache
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '120'
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 01 Jan 2024 00:00:00 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:01 GMT
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Vary:
+      - origin
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Content-Length:
+      - '0'
+      authorization:
+      - Token XXXXXXXX
+    method: DELETE
+    uri: https://desec.io/api/v1/auth/tokens/b86bc6a9-7d06-44f9-9cdd-df73fa515987/
+  response:
+    body:
+      string: ''
+    headers:
+      Allow:
+      - GET, PUT, PATCH, DELETE, HEAD, OPTIONS
+      Cache-Control:
+      - no-cache
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 01 Jan 2024 00:00:00 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:01 GMT
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Vary:
+      - origin
+    status:
+      code: 204
+      message: No Content
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Content-Length:
+      - '0'
+      authorization:
+      - Token XXXXXXXX
+    method: DELETE
+    uri: https://desec.io/api/v1/domains/test-suite.test/
+  response:
+    body:
+      string: ''
+    headers:
+      Allow:
+      - GET, DELETE, HEAD, OPTIONS
+      Cache-Control:
+      - no-cache
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 01 Jan 2024 00:00:00 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:01 GMT
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Vary:
+      - origin
+    status:
+      code: 204
+      message: No Content
+version: 1

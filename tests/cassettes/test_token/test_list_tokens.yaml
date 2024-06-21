@@ -1,0 +1,40 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      authorization:
+      - Token XXXXXXXX
+    method: GET
+    uri: https://desec.io/api/v1/auth/tokens/
+  response:
+    body:
+      string: '[{"id":"01234567-890a-4bcd-ef01-23456789abcd","created":"2024-01-01T00:00:00.000000Z","last_used":"2024-01-01T00:00:00.000000Z","max_age":null,"max_unused_period":null,"name":"test-main","perm_manage_tokens":true,"allowed_subnets":["0.0.0.0/0","::/0"],"is_valid":true}]'
+    headers:
+      Allow:
+      - GET, POST, HEAD, OPTIONS
+      Cache-Control:
+      - no-cache
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '269'
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 01 Jan 2024 00:00:00 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:01 GMT
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Vary:
+      - origin
+    status:
+      code: 200
+      message: OK
+version: 1

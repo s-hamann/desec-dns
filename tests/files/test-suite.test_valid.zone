@@ -1,0 +1,11 @@
+$ORIGIN test-suite.test.
+$TTL 3600
+test-suite.test. 86400 IN MX 10 mail.test-suite.test.
+@                86400 IN MX 20 mail2
+test-suite.test. IN A 192.0.2.1
+                 IN AAAA 2001:db8:10::1
+www IN CNAME test-suite.test.
+mail  7200 IN A 192.0.2.2
+mail2 7200 IN A 192.0.2.3
+
+www.example.com. 3600 IN A 192.0.2.4
