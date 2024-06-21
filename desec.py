@@ -1330,7 +1330,7 @@ def parse_zone_file(
         records = [r.to_text() for r in rrset]
         try:
             records = sanitize_records(t.cast(DnsRecordTypeType, rrset.rdtype), subname, records)
-        except ParameterError as e:
+        except ParameterCheckError as e:
             error = {"error_msg": str(e), "error_recovered": False}
 
         entry: JsonRRsetFromZonefileType
