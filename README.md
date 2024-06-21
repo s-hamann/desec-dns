@@ -3,6 +3,7 @@ deSEC.io API client
 
 [![Code Quality](https://github.com/s-hamann/desec-dns/actions/workflows/code_quality.yml/badge.svg)](https://github.com/s-hamann/desec-dns/actions/workflows/code_quality.yml)
 [![codecov](https://codecov.io/gh/s-hamann/desec-dns/graph/badge.svg?token=D9ZE0GXJN0)](https://codecov.io/gh/s-hamann/desec-dns)
+[![Documentation](https://github.com/s-hamann/desec-dns/actions/workflows/docs.yml/badge.svg)](https://s-hamann.github.io/desec-dns/)
 
 This is a simple client to manage domains hosted by
 [deSEC.io](https://desec.io/) using the deSEC.io API.
@@ -19,6 +20,8 @@ Requirements
 
 Usage
 =====
+
+### CLI
 
 The functionality is split into subcommands, as shown below.
 Most subcommand require further parameters to work.
@@ -73,6 +76,29 @@ optional arguments:
                         the request. This is the default behaviour.
   --debug-http          Print details about http requests / responses.
 ```
+
+### Python Module
+
+This project can also be used as a Python module.
+To get started, import the `desec` module and initialize an instance of `APIClient`:
+
+```py
+import desec
+
+api_client = desec.APIClient("my-secret-token-value")
+```
+
+Refer to the documentation for anything beyond that.
+The module's API is documented in standard Python docstrings and type
+annotation and can be viewed using any tool that can handle them.
+For example, to browse the documentation using [pdoc](https://pdoc.dev/), run:
+
+```sh
+pdoc -d google desec
+```
+
+The documentation is also [conveniently available online](https://s-hamann.github.io/desec-dns/)
+and automatically updated for the `main` branch of this repository.
 
 Installation
 ============
