@@ -398,6 +398,8 @@ class APIClient:
         token: API authorization token
         retry_limit: Number of retries when hitting the API's rate limit.
             Set to 0 to disable.
+        logger: Logger instance to send HTTP debug information to. Defaults to the named
+            logger `desec.client`.
 
     """
 
@@ -410,6 +412,7 @@ class APIClient:
         self._token_auth = TokenAuth(token)
         self._retry_limit = retry_limit
         self.logger = logger
+        "Logger instance to send HTTP debug information to."
 
     @staticmethod
     def _get_response_content(response: requests.Response) -> JsonGenericType:
@@ -457,10 +460,12 @@ class APIClient:
         This method handles low-level queries to the deSEC API and should not be used
         directly. Prefer the more high-level methods that implement specific API functions
         instead.
+
         If the initial request hits the API's rate limit, it is retired up to
         `self._retry_limit` times, after waiting for the interval returned by the API.
         Unless another process is using the API in parallel, no more than one retry
         should be needed.
+
         If the API refuses to answer the query because it would return more data than the
         API's limit for a single response, the query is retried in pagination mode. This
         means that the API is queries repeatedly until all results are retrieved. The
@@ -924,12 +929,10 @@ class APIClient:
 
         Raises:
             AuthenticationError: The token used for authentication is invalid.
-            ParameterError: The given domain name is incorrect or the domain could not be
-                created for another reason.
+            ParameterError: The given domain name is incorrect, conflicts with an existing
+                domain or is disallowed by policy.
             TokenPermissionError: The token used for authentication can not create domains
                 or the maximum number of domains for the current account has been reached.
-            ConflictError: The domain name conflicts with an existing domain or is
-                disallowed by policy.
             APIError: The API returned an unexpected error.
 
         """
@@ -1050,6 +1053,9 @@ class APIClient:
             domain: The name of the domain for which to modify records.
             rrset_list: List of RRsets to update.
             exclusive: If `True`, all DNS records not in `rrset_list` are removed.
+
+        Returns:
+            A list of dictionaries containing all data and metadata of the updated RRsets.
 
         Raises:
             AuthenticationError: The token used for authentication is invalid.

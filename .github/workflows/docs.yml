@@ -1,0 +1,46 @@
+---
+name: Documentation
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          check-latest: true
+      - name: Install package and dependencies
+        run: pip install -e .'[all]'
+      - name: Install pdoc
+        run: pip install pdoc
+      - name: Build documentation
+        run: pdoc --output-directory docs/ --docformat google --no-include-undocumented --edit-url desec=https://github.com/s-hamann/desec-dns/blob/main/desec desec
+      - name: Store generated docs
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
