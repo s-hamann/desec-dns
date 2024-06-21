@@ -1262,7 +1262,7 @@ def sanitize_records(rtype: DnsRecordTypeType, subname: str, rrset: list[str]) -
     if rtype == "CNAME" and subname == "":
         # CNAME in the zone apex can break the zone
         raise ParameterCheckError("CNAME records in the zone apex are not allowed.")
-    if rtype == "NS" and rrset and any(["*" in r for r in rrset]):
+    if rtype == "NS" and "*" in subname:
         # Wildcard NS records do not play well with DNSSEC
         raise ParameterCheckError("Wildcard NS records are not allowed.")
     if rtype == "TXT" and rrset:
