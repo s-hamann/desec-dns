@@ -1053,6 +1053,9 @@ class APIClient:
             rrset_list: List of RRsets to update.
             exclusive: If `True`, all DNS records not in `rrset_list` are removed.
 
+        Returns:
+            A list of dictionaries containing all data and metadata of the updated RRsets.
+
         Raises:
             AuthenticationError: The token used for authentication is invalid.
             NotFoundError: The given domain was not found in the current account.
