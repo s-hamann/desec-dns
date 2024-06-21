@@ -926,12 +926,10 @@ class APIClient:
 
         Raises:
             AuthenticationError: The token used for authentication is invalid.
-            ParameterError: The given domain name is incorrect or the domain could not be
-                created for another reason.
+            ParameterError: The given domain name is incorrect, conflicts with an existing
+                domain or is disallowed by policy.
             TokenPermissionError: The token used for authentication can not create domains
                 or the maximum number of domains for the current account has been reached.
-            ConflictError: The domain name conflicts with an existing domain or is
-                disallowed by policy.
             APIError: The API returned an unexpected error.
 
         """
