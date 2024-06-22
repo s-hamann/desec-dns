@@ -1,0 +1,78 @@
+---
+name: Release
+
+on:
+  release:
+    types:
+      - released
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install poetry
+        run: pip install poetry
+      - name: Build
+        run: |
+          sed -i -e "s/__version__ = .*/__version__ = \"$(echo '${{ github.event.release.tag_name }}' | sed 's/^v//')\"/" desec.py
+          poetry version '${{ github.event.release.tag_name }}'
+          poetry build
+      - name: Store built package
+        uses: actions/upload-artifact@v4
+        with:
+          name: distfiles
+          path: dist/
+          if-no-files-found: error
+          retention-days: 3
+
+  github:
+    name: Release to GitHub
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Get built package
+        uses: actions/download-artifact@v4
+        with:
+          name: distfiles
+          path: dist/
+      - name: Upload GitHub release assets
+        run: gh release upload '${{ github.event.release.tag_name }}' dist/*.{tar.gz,whl}
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  pypi:
+    name: Release to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: release
+      url: https://pypi.org/project/desec-dns
+    permissions:
+      contents: read
+      id-token: write
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Get built package
+        uses: actions/download-artifact@v4
+        with:
+          name: distfiles
+          path: dist/
+      - name: Publish on PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          print-hash: true
