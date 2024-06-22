@@ -30,16 +30,14 @@ jobs:
         uses: actions/checkout@v4
       - name: Install package and dependencies
         run: pip install -e .'[all]'
-      - name: Install linters
-        run: pip install mypy ruff
+      - name: Install tox
+        run: pip install tox
       - name: Register matchers
         run: for matcher in .github/workflows/matchers/*.json; do echo ::add-matcher::"${matcher}"; done
       - name: Check types
-        run: mypy --install-types --non-interactive --show-column-numbers .
-      - name: Check code style
-        run: ruff check .
-      - name: Check code formatting
-        run: ruff format --check .
+        run: tox -q run -e typecheck -- --show-column-numbers
+      - name: Check code style and formatting
+        run: tox -q run -e lint
 
   test:
     name: Tests
