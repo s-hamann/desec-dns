@@ -1,0 +1,25 @@
+---
+changelog:
+  categories:
+    - title: Security 🚨
+      labels:
+        - security
+    - title: Breaking Changes ⚠️
+      labels:
+        - breaking change
+    - title: New Features 🚀
+      labels:
+        - enhancement
+    - title: Fixes 🛠
+      labels:
+        - bug
+      exclude:
+        labels:
+          - security
+    - title: Other Changes ⚙️
+      labels:
+        - "*"
+      exclude:
+        labels:
+          - ci/cd
+          - tests
