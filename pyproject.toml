@@ -1,9 +1,23 @@
 [tool.poetry]
 name = "desec-dns"
 version = "0.0.0"
-description = "CLI for desec.io's http api."
-packages = [{ include = "desec.py" }]
+description = "A simple deSEC.io API client"
+license = "MIT"
 authors = ["Sebastian Hamann <code@ares-macrotechnology.com>"]
+readme = "README.md"
+repository = "https://github.com/s-hamann/desec-dns"
+documentation = "https://s-hamann.github.io/desec-dns/"
+classifiers = [
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
+]
+packages = [{ include = "desec.py" }]
+include = ["CHANGELOG.md"]
+
+[tool.poetry.urls]
+"Issue Tracker" = "https://github.com/s-hamann/desec-dns/issues"
+Changelog = "https://github.com/s-hamann/desec-dns/blob/main/CHANGELOG.md"
 
 [tool.poetry.dependencies]
 python = ">=3.9"
