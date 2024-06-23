@@ -28,7 +28,7 @@ Most subcommand require further parameters to work.
 They are described by the usage information of each individual subcommand.
 
 ```
-usage: desec [-h] [--token TOKEN | --token-file TOKEN_FILE] [--non-blocking] [--blocking] [--debug-http] action ...
+usage: desec [-h] [-V] [--token TOKEN | --token-file TOKEN_FILE] [--non-blocking] [--blocking] [--debug-http] action ...
 
 A simple deSEC.io API client
 
@@ -66,6 +66,7 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  -V, --version         show program's version number and exit
   --token TOKEN         API authentication token
   --token-file TOKEN_FILE
                         file containing the API authentication token (default:

@@ -44,6 +44,8 @@ except ModuleNotFoundError:
 if t.TYPE_CHECKING:
     import pathlib
 
+__version__ = "0.0.0"
+
 DnsRecordTypeType = t.Literal[
     "A",
     "AAAA",
@@ -1528,6 +1530,7 @@ def _configure_cli_logging(level: int) -> None:
 def _main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="A simple deSEC.io API client")
+    parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
     p_action = parser.add_subparsers(dest="action", metavar="action")
     p_action.required = True
 
