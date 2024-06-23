@@ -43,6 +43,7 @@ extend-select = [
     "N", # pep8-naming
     "D", # pydocstyle
     "UP", # pyupgrade
+    "FA", # flake8-future-annotations
     "PT", # flake8-pytest-style
 ]
 ignore = [
