@@ -344,7 +344,7 @@ class TLSAField:
 
     """
 
-    valid_values: list[str]
+    valid_values: tuple[str, ...]
 
     def __init__(self, value: str | int):
         try:
@@ -376,19 +376,19 @@ class TLSAField:
 class TLSAUsage(TLSAField):
     """TLSA certificate usage information."""
 
-    valid_values = ["PKIX-TA", "PKIX-EE", "DANE-TA", "DANE-EE"]
+    valid_values = ("PKIX-TA", "PKIX-EE", "DANE-TA", "DANE-EE")
 
 
 class TLSASelector(TLSAField):
     """TLSA selector."""
 
-    valid_values = ["CERT", "SPKI"]
+    valid_values = ("CERT", "SPKI")
 
 
 class TLSAMatchType(TLSAField):
     """TLSA match type."""
 
-    valid_values = ["FULL", "SHA2-256", "SHA2-512"]
+    valid_values = ("FULL", "SHA2-256", "SHA2-512")
 
 
 class APIClient:
