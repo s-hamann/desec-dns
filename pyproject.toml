@@ -38,6 +38,7 @@ line-length = 99
 
 [tool.ruff.lint]
 extend-select = [
+    "W", # pycodestyle warnings
     "I", # isort
     "N", # pep8-naming
     "D", # pydocstyle
