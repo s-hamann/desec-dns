@@ -45,6 +45,7 @@ extend-select = [
     "UP", # pyupgrade
     "FA", # flake8-future-annotations
     "PT", # flake8-pytest-style
+    "TCH", # flake8-type-checking
 ]
 ignore = [
     "D105", # undocumented-magic-method
