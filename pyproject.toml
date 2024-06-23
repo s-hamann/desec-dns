@@ -46,6 +46,7 @@ extend-select = [
     "FA", # flake8-future-annotations
     "PT", # flake8-pytest-style
     "TCH", # flake8-type-checking
+    "RUF", # Ruff-specific rules
 ]
 ignore = [
     "D105", # undocumented-magic-method
