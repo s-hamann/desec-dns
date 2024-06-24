@@ -1,6 +1,7 @@
 deSEC.io API client
 ===================
 
+[![PyPI](https://img.shields.io/pypi/v/desec-dns)](https://pypi.org/project/desec-dns/)
 [![Code Quality](https://github.com/s-hamann/desec-dns/actions/workflows/code_quality.yml/badge.svg)](https://github.com/s-hamann/desec-dns/actions/workflows/code_quality.yml)
 [![codecov](https://codecov.io/gh/s-hamann/desec-dns/graph/badge.svg?token=D9ZE0GXJN0)](https://codecov.io/gh/s-hamann/desec-dns)
 [![Documentation](https://github.com/s-hamann/desec-dns/actions/workflows/docs.yml/badge.svg)](https://s-hamann.github.io/desec-dns/)
