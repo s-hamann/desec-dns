@@ -45,6 +45,7 @@ extend-select = [
     "UP", # pyupgrade
     "FA", # flake8-future-annotations
     "PT", # flake8-pytest-style
+    "SIM", # flake8-simplify
     "TCH", # flake8-type-checking
     "RUF", # Ruff-specific rules
 ]
@@ -57,6 +58,9 @@ ignore = [
     "PT004", # pytest-missing-fixture-name-underscore
     "PT005", # pytest-incorrect-fixture-name-underscore
     "PT006", # pytest-parametrize-names-wrong-type
+    "SIM105", # suppressible-exception
+    "SIM108", # if-else-block-instead-of-if-exp
+    "SIM212", # if-expr-with-twisted-arms
 ]
 
 [tool.ruff.lint.per-file-ignores]
