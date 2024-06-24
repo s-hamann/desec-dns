@@ -396,6 +396,9 @@ class APIClient:
 
     Args:
         token: API authorization token
+        request_timeout: HTTP request timeout in seconds. Note that the timeout is applied
+            to individual HTTP requests and the methods of this class may make multiple
+            requests. Set to `None` to disable.
         retry_limit: Number of retries when hitting the API's rate limit.
             Set to 0 to disable.
         logger: Logger instance to send HTTP debug information to. Defaults to the named
@@ -406,10 +409,12 @@ class APIClient:
     def __init__(
         self,
         token: str,
+        request_timeout: int | None = 15,
         retry_limit: int = 3,
         logger: logging.Logger = logging.getLogger("desec.client"),
     ):
         self._token_auth = TokenAuth(token)
+        self._request_timeout = request_timeout
         self._retry_limit = retry_limit
         self.logger = logger
         "Logger instance to send HTTP debug information to."
@@ -501,6 +506,8 @@ class APIClient:
                 The request hit the API's rate limit. Retries up to the configured limit
                 were made, but also hit the rate limit.
             APIError: The API returned an unexpected error.
+            requests.Timeout: The API failed to reply to an HTTP request within the time
+                limit.
 
         """
         if method == "GET" or method == "DELETE":
@@ -527,7 +534,12 @@ class APIClient:
                     extra=dict(method=method, url=url, params=params, body=body),
                 )
                 r = requests.request(
-                    method, next_url, auth=self._token_auth, params=params, json=body
+                    method,
+                    next_url,
+                    auth=self._token_auth,
+                    params=params,
+                    json=body,
+                    timeout=self._request_timeout,
                 )
                 self.logger.debug(
                     f"Response: {r.status_code} for {method} {url}",
