@@ -35,6 +35,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 line-length = 99
+target-version = "py39"
 
 [tool.ruff.lint]
 extend-select = [
