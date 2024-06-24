@@ -43,6 +43,7 @@ extend-select = [
     "N", # pep8-naming
     "D", # pydocstyle
     "UP", # pyupgrade
+    "B", # flake8-bugbear
     "FA", # flake8-future-annotations
     "PT", # flake8-pytest-style
     "SIM", # flake8-simplify
@@ -73,6 +74,13 @@ max-doc-length = 92
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "desec.TLSAUsage",
+    "desec.TLSASelector",
+    "desec.TLSAMatchType",
+]
 
 [tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false

@@ -411,7 +411,7 @@ class APIClient:
         token: str,
         request_timeout: int | None = 15,
         retry_limit: int = 3,
-        logger: logging.Logger = logging.getLogger("desec.client"),
+        logger: logging.Logger = logging.getLogger("desec.client"),  # noqa: B008
     ):
         self._token_auth = TokenAuth(token)
         self._request_timeout = request_timeout
