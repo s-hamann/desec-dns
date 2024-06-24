@@ -632,7 +632,6 @@ class APIClient:
                 raise APIExpectationError("Unexpected format in Link header")
             label = m.group(1)
             _url = _url[1:-1]
-            assert label not in mapping
             mapping[label] = _url
         return mapping
 
