@@ -104,17 +104,27 @@ and automatically updated for the `main` branch of this repository.
 Installation
 ============
 
-Currently, the only way to install / use desec-dns is from source.
+This software is available on [PyPI](https://pypi.org/project/desec-dns/) and can therefore be
+installed in the usual way, e.g. using [pipx](https://pypi.org/project/pipx/):
 
-You can simply run `python desec.py` as-is, as long as the dependencies (see
-[above](#requirements)) are installed for your python interpreter.
+```sh
+pipx install desec-dns[all]
+```
 
-The package can be installed in a (virtual) environment using 
-`pip install -e ./path/to/desc-dns` or 
-`pip install git+https://github.com/s-hamann/desec-dns`. That should also make `desec` 
-available as a command (if the virtual environment is activated). Note that `desec-dns`
-is the **package name**. The **module** is called `desec`, so you need to `import desec`
-when using it as a library.
+Note that this command installs the dependencies required for all optional features,
+namely:
+* `zonefiles` - Support for importing zone files  
+* `tlsa` - Support generating TLSA records from certificates  
+Select only desired features or omit them altogether for a smaller installation.
+
+To install the latest development version, run
+```sh
+pipx install git+https://github.com/s-hamann/desec-dns.git#egg=desec-dns[all]
+```
+or clone the repository and run
+```sh
+pipx install -e ./path/to/desc-dns[all]
+```
 
 You can use [poetry](https://python-poetry.org/docs/) to manage a virtual environment
 with desec installed. That is especially recommended if you want to
@@ -122,6 +132,10 @@ with desec installed. That is especially recommended if you want to
 and necessary tools for formatting, linting, and type-checking. If you want to work on
 features that require optional dependencies, `install` the corresponding extras, e.g.:
 `poetry install --extras=tlsa` or just go for `poetry install --all-extras`.
+
+Finally, you may skip package installation altogether and just get the Python script and
+place it in a convenient location. Be warned that this method is deprecated and may cease
+to work without further notice.
 
 Related Work
 ============
