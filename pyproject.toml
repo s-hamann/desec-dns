@@ -43,6 +43,7 @@ extend-select = [
     "N", # pep8-naming
     "D", # pydocstyle
     "UP", # pyupgrade
+    "S", # flake8-bandit
     "B", # flake8-bugbear
     "FA", # flake8-future-annotations
     "PT", # flake8-pytest-style
@@ -67,6 +68,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
     "D", # pydocstyle
+    "S101", # assert
 ]
 
 [tool.ruff.lint.pycodestyle]
