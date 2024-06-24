@@ -2084,7 +2084,7 @@ def main() -> None:
                     {
                         "type": "TLSA",
                         "subname": subname,
-                        "records": existing_rrset + [record],
+                        "records": [*existing_rrset, record],
                         "ttl": arguments.ttl,
                     }
                 )
