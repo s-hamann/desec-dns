@@ -10,6 +10,19 @@ This is a simple client to manage domains hosted by
 [deSEC.io](https://desec.io/) using the deSEC.io API.
 It can be used from the command line or as a Python module.
 
+It serves as an API client for most of the functionality of the deSEC.io API,
+but also includes some additional convenience functionality that goes beyond
+what is offered by the API.
+The features include:
+* Domain management
+* DNS record management
+* Authentication token management
+* Token policy management
+* Import and export of records in zone file format
+* Import and export of records in custom JSON format
+* Generation of TLSA records from certificate files
+* Sensible handling of rate limits and pagination
+
 Requirements
 ============
 
