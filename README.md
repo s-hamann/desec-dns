@@ -69,7 +69,7 @@ optional arguments:
   --token TOKEN         API authentication token
   --token-file TOKEN_FILE
                         file containing the API authentication token (default:
-                        $HOME/.desec_auth_token)
+                        $XDG_CONFIG_HOME/desec/token)
   --non-blocking        When the API's rate limit is reached, return an
                         appropriate error.
   --blocking            When the API's rate limit is reached, wait and retry

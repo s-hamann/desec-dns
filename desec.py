@@ -1535,8 +1535,8 @@ def main() -> None:
     g.add_argument("--token", help="API authentication token")
     g.add_argument(
         "--token-file",
-        default=os.path.join("~", ".desec_auth_token"),
-        help="file containing the API authentication token (default: %(default)s)",
+        default=os.path.join(os.environ.get("XDG_CONFIG_HOME", "~/.config"), "desec", "token"),
+        help="file containing the API authentication token (default: $XDG_CONFIG_HOME/desec/token)",
     )
 
     parser.add_argument(
