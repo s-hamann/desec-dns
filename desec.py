@@ -1535,7 +1535,7 @@ def main() -> None:
     g.add_argument("--token", help="API authentication token")
     g.add_argument(
         "--token-file",
-        default=os.path.join(os.path.expanduser("~"), ".desec_auth_token"),
+        default=os.path.join("~", ".desec_auth_token"),
         help="file containing the API authentication token (default: %(default)s)",
     )
 
@@ -1945,7 +1945,7 @@ def main() -> None:
     if arguments.token:
         token = arguments.token
     else:
-        with open(arguments.token_file) as f:
+        with open(os.path.expanduser(arguments.token_file)) as f:
             token = f.readline().strip()
     if arguments.block:
         api_client = APIClient(token)
