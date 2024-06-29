@@ -1223,7 +1223,7 @@ class APIClient:
             return self.change_record(domain, rtype, subname, rrset)
 
 
-def print_records(rrset: JsonRRsetType | JsonRRsetFromZonefileType, **kwargs: t.Any) -> None:
+def _print_records(rrset: JsonRRsetType | JsonRRsetFromZonefileType, **kwargs: t.Any) -> None:
     """Print a RRset in zone file format.
 
     Args:
@@ -1236,7 +1236,7 @@ def print_records(rrset: JsonRRsetType | JsonRRsetFromZonefileType, **kwargs: t.
         print(line, **kwargs)
 
 
-def print_rrsets(
+def _print_rrsets(
     rrsets: t.Sequence[JsonRRsetType | JsonRRsetFromZonefileType], **kwargs: t.Any
 ) -> None:
     """Print multiple RRsets in zone file format.
@@ -1247,7 +1247,7 @@ def print_rrsets(
 
     """
     for rrset in rrsets:
-        print_records(rrset, **kwargs)
+        _print_records(rrset, **kwargs)
 
 
 def sanitize_records(rtype: DnsRecordTypeType, subname: str, rrset: list[str]) -> list[str]:
@@ -1484,7 +1484,7 @@ def tlsa_record(
     return f"{int(usage)} {int(selector)} {int(match_type)} {hex_data}"
 
 
-class CliClientFormatter(logging.Formatter):
+class _CliClientFormatter(logging.Formatter):
     """Pretty prints requests and response logs for CLI usage."""
 
     def format(self, record: logging.LogRecord) -> str:
@@ -1511,21 +1511,21 @@ class CliClientFormatter(logging.Formatter):
         return message
 
 
-def configure_cli_logging(level: int) -> None:
+def _configure_cli_logging(level: int) -> None:
     """Set up logging configuration when using the module as a command-line interface.
 
     Args:
         level: Logging level to set for desec.client logger.
     """
     http_handler = logging.StreamHandler(stream=sys.stderr)
-    http_formatter = CliClientFormatter()
+    http_formatter = _CliClientFormatter()
     http_handler.setFormatter(http_formatter)
     http_logger = logging.getLogger("desec.client")
     http_logger.addHandler(http_handler)
     http_logger.setLevel(level)
 
 
-def main() -> None:
+def _main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="A simple deSEC.io API client")
     p_action = parser.add_subparsers(dest="action", metavar="action")
@@ -1940,7 +1940,7 @@ def main() -> None:
 
     arguments = parser.parse_args()
     del p_action, g, p, parser
-    configure_cli_logging(level=logging.DEBUG if arguments.debug_http else logging.INFO)
+    _configure_cli_logging(level=logging.DEBUG if arguments.debug_http else logging.INFO)
 
     if arguments.token:
         token = arguments.token
@@ -2016,7 +2016,7 @@ def main() -> None:
                 arguments.domain, arguments.type, arguments.subname
             )
             for rrset in rrsets_result:
-                print_records(rrset)
+                _print_records(rrset)
 
         elif arguments.action == "add-record":
             arguments.records = sanitize_records(
@@ -2029,7 +2029,7 @@ def main() -> None:
                 arguments.records,
                 arguments.ttl,
             )
-            print_records(rrset_result)
+            _print_records(rrset_result)
 
         elif arguments.action == "change-record":
             arguments.records = sanitize_records(
@@ -2042,7 +2042,7 @@ def main() -> None:
                 arguments.records,
                 arguments.ttl,
             )
-            print_records(rrset_result)
+            _print_records(rrset_result)
 
         elif arguments.action == "update-record":
             arguments.records = sanitize_records(
@@ -2055,7 +2055,7 @@ def main() -> None:
                 arguments.records,
                 arguments.ttl,
             )
-            print_records(rrset_result)
+            _print_records(rrset_result)
 
         elif arguments.action == "delete-record":
             if arguments.records:
@@ -2101,7 +2101,7 @@ def main() -> None:
                 )
 
             rrsets_result = api_client.update_bulk_record(arguments.domain, records)
-            print_rrsets(rrsets_result)
+            _print_rrsets(rrsets_result)
 
         elif arguments.action == "export":
             rrsets_result = api_client.get_records(arguments.domain)
@@ -2127,7 +2127,7 @@ def main() -> None:
             rrsets_result = api_client.update_bulk_record(
                 arguments.domain, records, arguments.clear
             )
-            print_rrsets(rrsets_result)
+            _print_rrsets(rrsets_result)
 
         elif arguments.action == "import-zone":
             record_list = parse_zone_file(
@@ -2146,12 +2146,12 @@ def main() -> None:
                     "Dry run. Not writing changes to API. I would have written this:",
                     file=sys.stderr,
                 )
-                print_rrsets(record_list)
+                _print_rrsets(record_list)
             else:
                 rrsets_result = api_client.update_bulk_record(
                     arguments.domain, record_list, arguments.clear
                 )
-                print_rrsets(rrsets_result)
+                _print_rrsets(rrsets_result)
 
     except DesecClientError as e:
         print(str(e))
@@ -2159,4 +2159,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    _main()
