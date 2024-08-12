@@ -1686,7 +1686,7 @@ def _main() -> None:
         "-r",
         "--records",
         required=True,
-        nargs="+",
+        action="append",
         metavar="RECORD",
         help="the DNS record(s) to add",
     )
@@ -1710,7 +1710,9 @@ def _main() -> None:
         default="",
         help="subname to change, omit to change a record in the zone apex",
     )
-    p.add_argument("-r", "--records", nargs="+", metavar="RECORD", help="the new DNS record(s)")
+    p.add_argument(
+        "-r", "--records", action="append", metavar="RECORD", help="the new DNS record(s)"
+    )
     p.add_argument("--ttl", type=int, help="the new TTL")
 
     p = p_action.add_parser("delete-record", help="delete a record set")
@@ -1732,7 +1734,7 @@ def _main() -> None:
     p.add_argument(
         "-r",
         "--records",
-        nargs="+",
+        action="append",
         metavar="RECORD",
         help="the DNS records to delete (default: all)",
     )
@@ -1755,7 +1757,7 @@ def _main() -> None:
     p.add_argument(
         "-r",
         "--records",
-        nargs="+",
+        action="append",
         required=True,
         metavar="RECORD",
         help="the DNS records to add",
@@ -1781,7 +1783,7 @@ def _main() -> None:
             help="subname that the record is valid for, omit to set a record to the zone apex",
         )
         p.add_argument(
-            "-p", "--ports", nargs="+", required=True, help="ports that use the certificate"
+            "-p", "--ports", action="append", required=True, help="ports that use the certificate"
         )
         p.add_argument(
             "--protocol",
@@ -1853,7 +1855,7 @@ def _main() -> None:
             help="subname that the record is valid for, omit to set a record to the zone apex",
         )
         p.add_argument(
-            "-p", "--ports", nargs="+", required=True, help="ports that use the certificate"
+            "-p", "--ports", action="append", required=True, help="ports that use the certificate"
         )
         p.add_argument(
             "--protocol",
