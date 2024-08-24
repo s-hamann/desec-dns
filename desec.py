@@ -1587,6 +1587,11 @@ def _main() -> None:
         default=False,
         help="create a token that can manage tokens",
     )
+    p.add_argument(
+        "--allowed-subnets",
+        action="append",
+        help="IPv4/IPv6 addresses or subnets from which clients may authenticate with this token",
+    )
 
     p = p_action.add_parser("modify-token", help="modify an existing authentication token")
     p.add_argument("id", help="token id")
@@ -1605,6 +1610,11 @@ def _main() -> None:
         action="store_false",
         default=None,
         help="do not allow this token to manage tokens",
+    )
+    p.add_argument(
+        "--allowed-subnets",
+        action="append",
+        help="IPv4/IPv6 addresses or subnets from which clients may authenticate with this token",
     )
 
     p = p_action.add_parser("delete-token", help="delete an authentication token")
@@ -1980,12 +1990,14 @@ def _main() -> None:
             pprint(tokens_result)
 
         elif arguments.action == "create-token":
-            new_token_result = api_client.create_token(arguments.name, arguments.manage_tokens)
+            new_token_result = api_client.create_token(
+                arguments.name, arguments.manage_tokens, arguments.allowed_subnets
+            )
             print(new_token_result["token"])
 
         elif arguments.action == "modify-token":
             token_result = api_client.modify_token(
-                arguments.id, arguments.name, arguments.manage_tokens
+                arguments.id, arguments.name, arguments.manage_tokens, arguments.allowed_subnets
             )
             pprint(token_result)
 
