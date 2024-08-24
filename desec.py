@@ -709,7 +709,11 @@ class APIClient:
         return t.cast(JsonTokenSecretType, data)
 
     def modify_token(
-        self, token_id: str, name: str | None = None, manage_tokens: bool | None = None
+        self,
+        token_id: str,
+        name: str | None = None,
+        manage_tokens: bool | None = None,
+        allowed_subnets: list[str] | None = None,
     ) -> JsonTokenType:
         """Modify an existing authentication token.
 
@@ -720,6 +724,8 @@ class APIClient:
             name: Set the "name" attribute of the target token to this value.
             manage_tokens: Set the "perm_manage_tokens" attribute of the target token to
                 this value.
+            allowed_subnets: Set the "allowed_subnets" attribute of the target token to this
+                value.
 
         Returns:
             A dictionary containing all metadata of the changed token, not including the
@@ -739,6 +745,8 @@ class APIClient:
             request_data["name"] = name
         if manage_tokens is not None:
             request_data["perm_manage_tokens"] = manage_tokens
+        if allowed_subnets is not None:
+            request_data["allowed_subnets"] = allowed_subnets
         data = self.query("PATCH", url, request_data)
         return t.cast(JsonTokenType, data)
 
