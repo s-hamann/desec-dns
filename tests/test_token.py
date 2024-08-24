@@ -67,8 +67,20 @@ def test_create_token(request, api_client, new_token_params):
 @pytest.mark.vcr
 @pytest.mark.parametrize(
     "changed_token_params",
-    [{}, {"name": "test-suite"}, {"manage_tokens": True}, {"manage_tokens": False}],
-    ids=["simple", "named", "perm_manage_tokens", "no_perm_manage_tokens"],
+    [
+        {},
+        {"name": "test-suite"},
+        {"manage_tokens": True},
+        {"manage_tokens": False},
+        {"allowed_subnets": ["192.0.2.0/24", "2001:db8::/32"]},
+    ],
+    ids=[
+        "simple",
+        "named",
+        "perm_manage_tokens",
+        "no_perm_manage_tokens",
+        "restricted_subnets",
+    ],
 )
 def test_modify_token(api_client, new_token, changed_token_params):
     """Test APIClient.modify_token() with valid parameters.
