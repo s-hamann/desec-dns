@@ -16,8 +16,22 @@ def test_list_tokens(api_client):
 @pytest.mark.vcr
 @pytest.mark.parametrize(
     "new_token_params",
-    [{}, {"name": "test-suite"}, {"manage_tokens": True}, {"manage_tokens": False}],
-    ids=["simple", "named", "perm_manage_tokens", "no_perm_manage_tokens"],
+    [
+        {},
+        {"name": "test-suite"},
+        {"manage_tokens": True},
+        {"manage_tokens": False},
+        {"allowed_subnets": ["192.0.2.0/24", "2001:db8::/32"]},
+        {"allowed_subnets": None},
+    ],
+    ids=[
+        "simple",
+        "named",
+        "perm_manage_tokens",
+        "no_perm_manage_tokens",
+        "restricted_subnets",
+        "all_subnets",
+    ],
 )
 def test_create_token(request, api_client, new_token_params):
     """Test APIClient.create_token() with valid parameters.
@@ -45,6 +59,8 @@ def test_create_token(request, api_client, new_token_params):
     for key, value in new_token_params.items():
         if key == "manage_tokens":
             key = "perm_manage_tokens"
+        elif key == "allowed_subnets" and value is None:
+            value = ["0.0.0.0/0", "::/0"]
         assert token[key] == value
 
 
