@@ -662,7 +662,7 @@ class APIClient:
         Raises:
             AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
-                "manage_tokens" attribute.
+                "perm_manage_tokens" attribute.
             APIError: The API returned an unexpected error.
 
         """
@@ -679,7 +679,8 @@ class APIClient:
 
         Args:
             name: Set the "name" attribute of the new token to this value.
-            manage_tokens: Set the "manage_tokens" attribute of the new token to this value.
+            manage_tokens: Set the "perm_manage_tokens" attribute of the new token to this
+                value.
 
         Returns:
             A dictionary containing all metadata of the newly created token as well as the
@@ -688,7 +689,7 @@ class APIClient:
         Raises:
             AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
-                "manage_tokens" attribute.
+                "perm_manage_tokens" attribute.
             APIError: The API returned an unexpected error.
 
         """
@@ -710,8 +711,8 @@ class APIClient:
         Args:
             token_id: The unique id of the token to modify.
             name: Set the "name" attribute of the target token to this value.
-            manage_tokens: Set the "manage_tokens" attribute of the target token to this
-                value.
+            manage_tokens: Set the "perm_manage_tokens" attribute of the target token to
+                this value.
 
         Returns:
             A dictionary containing all metadata of the changed token, not including the
@@ -720,7 +721,7 @@ class APIClient:
         Raises:
             AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
-                "manage_tokens" attribute.
+                "perm_manage_tokens" attribute.
             APIError: The API returned an unexpected error.
 
         """
@@ -745,7 +746,7 @@ class APIClient:
         Raises:
             AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
-                "manage_tokens" attribute.
+                "perm_manage_tokens" attribute.
             APIError: The API returned an unexpected error.
 
         """
@@ -767,7 +768,7 @@ class APIClient:
         Raises:
             AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
-                "manage_tokens" attribute.
+                "perm_manage_tokens" attribute.
             APIError: The API returned an unexpected error.
 
         """
@@ -801,7 +802,7 @@ class APIClient:
         Raises:
             AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
-                "manage_tokens" attribute.
+                "perm_manage_tokens" attribute.
             ConflictError: There is a conflicting policy for this token, domain, subname
                 and type.
             APIError: The API returned an unexpected error.
@@ -849,7 +850,7 @@ class APIClient:
         Raises:
             AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
-                "manage_tokens" attribute.
+                "perm_manage_tokens" attribute.
             ConflictError: There is a conflicting policy for this token, domain, subname
                 and type.
             APIError: The API returned an unexpected error.
@@ -881,7 +882,7 @@ class APIClient:
         Raises:
             AuthenticationError: The token used for authentication is invalid.
             TokenPermissionError: The token used for authentication does not have the
-                "manage_tokens" attribute.
+                "perm_manage_tokens" attribute.
             APIError: The API returned an unexpected error.
 
         """
