@@ -671,7 +671,10 @@ class APIClient:
         return t.cast(list[JsonTokenType], data)
 
     def create_token(
-        self, name: str = "", manage_tokens: bool | None = None
+        self,
+        name: str = "",
+        manage_tokens: bool | None = None,
+        allowed_subnets: list[str] | None = None,
     ) -> JsonTokenSecretType:
         """Create a new authentication token.
 
@@ -680,6 +683,8 @@ class APIClient:
         Args:
             name: Set the "name" attribute of the new token to this value.
             manage_tokens: Set the "perm_manage_tokens" attribute of the new token to this
+                value.
+            allowed_subnets: Set the "allowed_subnets" attribute of the new token to this
                 value.
 
         Returns:
@@ -698,6 +703,8 @@ class APIClient:
         request_data = {"name": name}
         if manage_tokens is not None:
             request_data["perm_manage_tokens"] = manage_tokens
+        if allowed_subnets is not None:
+            request_data["allowed_subnets"] = allowed_subnets
         data = self.query("POST", url, request_data)
         return t.cast(JsonTokenSecretType, data)
 
