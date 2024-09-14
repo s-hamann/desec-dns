@@ -24,7 +24,7 @@ jobs:
         run: pip install poetry
       - name: Build
         run: |
-          sed -i -e "s/__version__ = .*/__version__ = \"$(echo '${{ github.event.release.tag_name }}' | sed 's/^v//')\"/" desec.py
+          sed -i -e "s/__version__ = .*/__version__ = \"$(echo '${{ github.event.release.tag_name }}' | sed 's/^v//')\"/" desec/__init__.py
           poetry version '${{ github.event.release.tag_name }}'
           poetry build
       - name: Store built package

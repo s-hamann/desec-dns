@@ -12,7 +12,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Typing :: Typed",
 ]
-packages = [{ include = "desec.py" }]
+packages = [{ include = "desec/" }]
 include = [
     { path = "CHANGELOG.md", format = "sdist" },
 ]
@@ -94,9 +94,9 @@ convention = "google"
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = [
-    "desec.TLSAUsage",
-    "desec.TLSASelector",
-    "desec.TLSAMatchType",
+    "desec.__init__.TLSAUsage",
+    "desec.__init__.TLSASelector",
+    "desec.__init__.TLSAMatchType",
 ]
 
 [tool.ruff.lint.flake8-pytest-style]
