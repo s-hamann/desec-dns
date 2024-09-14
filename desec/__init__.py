@@ -24,6 +24,12 @@ from pprint import pprint
 
 import requests
 
+import desec.types
+
+# For backwards compatibility, we import submodule content into the top-level scope.
+# To be removed in version 2.0.
+from desec.types import *  # noqa: F403
+
 try:
     from cryptography import x509
     from cryptography.hazmat.backends import default_backend
@@ -46,144 +52,9 @@ if t.TYPE_CHECKING:
 
 __version__ = "0.0.0"
 
-DnsRecordTypeType = t.Literal[
-    "A",
-    "AAAA",
-    "AFSDB",
-    "APL",
-    "CAA",
-    "CDNSKEY",
-    "CDS",
-    "CERT",
-    "CNAME",
-    "DHCID",
-    "DNAME",
-    "DNSKEY",
-    "DLV",
-    "DS",
-    "EUI48",
-    "EUI64",
-    "HINFO",
-    "HTTPS",
-    "KX",
-    "L32",
-    "L64",
-    "LOC",
-    "LP",
-    "MX",
-    "NAPTR",
-    "NID",
-    "NS",
-    "OPENPGPKEY",
-    "PTR",
-    "RP",
-    "SMIMEA",
-    "SPF",
-    "SRV",
-    "SSHFP",
-    "SVCB",
-    "TLSA",
-    "TXT",
-    "URI",
-]
-JsonGenericType = t.Union[
-    None,
-    int,
-    float,
-    str,
-    bool,
-    t.Sequence["JsonGenericType"],
-    t.Mapping[str, "JsonGenericType"],
-]
-
-
-class JsonTokenType(t.TypedDict):
-    """API token information."""
-
-    allowed_subnets: list[str]
-    auto_policy: bool
-    created: str
-    id: str
-    is_valid: bool
-    last_used: str | None
-    max_age: str | None
-    max_unused_period: str | None
-    name: str
-    perm_create_domain: bool
-    perm_delete_domain: bool
-    perm_manage_tokens: bool
-
-
-class JsonTokenSecretType(JsonTokenType):
-    """API token information including the secret token value."""
-
-    token: str
-
-
-class JsonTokenPolicyType(t.TypedDict):
-    """API token policy information."""
-
-    id: str
-    domain: str | None
-    subname: str | None
-    type: str | None
-    perm_write: bool
-
-
-class JsonDNSSECKeyInfoType(t.TypedDict):
-    """DNSSEC public key information."""
-
-    dnskey: str
-    ds: list[str]
-    flags: int
-    keytype: str
-    managed: bool
-
-
-class JsonDomainType(t.TypedDict):
-    """Domain information."""
-
-    created: str
-    minimum_ttl: int
-    name: str
-    published: str
-    touched: str
-
-
-class JsonDomainWithKeysType(JsonDomainType):
-    """Domain information including DNSSEC public key information."""
-
-    keys: list[JsonDNSSECKeyInfoType]
-
-
-class JsonRRsetWritableType(t.TypedDict):
-    """Writable fields of RRset information."""
-
-    records: list[str]
-    subname: str
-    ttl: t.NotRequired[int]
-    type: DnsRecordTypeType
-
-
-class JsonRRsetType(JsonRRsetWritableType):
-    """RRset information."""
-
-    created: str
-    domain: str
-    name: str
-    touched: str
-
-
-class JsonRRsetFromZonefileType(JsonRRsetWritableType):
-    """RRset information parsed from a zone file."""
-
-    name: str
-    error_msg: t.NotRequired[str]
-    error_recovered: t.NotRequired[bool]
-
 
 API_BASE_URL = "https://desec.io/api/v1"
-RECORD_TYPES = t.get_args(DnsRecordTypeType)
+RECORD_TYPES = t.get_args(desec.types.DnsRecordTypeType)
 
 
 class ExitCode(IntEnum):
@@ -425,7 +296,7 @@ class APIClient:
         "Logger instance to send HTTP debug information to."
 
     @staticmethod
-    def _get_response_content(response: requests.Response) -> JsonGenericType:
+    def _get_response_content(response: requests.Response) -> desec.types.JsonGenericType:
         """Safely get content from a response.
 
         Args:
@@ -452,19 +323,22 @@ class APIClient:
         method: t.Literal["DELETE", "GET"],
         url: str,
         data: t.Mapping[str, str | int | float | bool | None] | None = None,
-    ) -> JsonGenericType | str: ...
+    ) -> desec.types.JsonGenericType | str: ...
 
     @t.overload
     def query(
-        self, method: t.Literal["PATCH", "POST", "PUT"], url: str, data: JsonGenericType = None
-    ) -> JsonGenericType | str: ...
+        self,
+        method: t.Literal["PATCH", "POST", "PUT"],
+        url: str,
+        data: desec.types.JsonGenericType = None,
+    ) -> desec.types.JsonGenericType | str: ...
 
     def query(
         self,
         method: t.Literal["DELETE", "GET", "PATCH", "POST", "PUT"],
         url: str,
-        data: JsonGenericType = None,
-    ) -> JsonGenericType | str:
+        data: desec.types.JsonGenericType = None,
+    ) -> desec.types.JsonGenericType | str:
         """Query the API.
 
         This method handles low-level queries to the deSEC API and should not be used
@@ -608,7 +482,7 @@ class APIClient:
             content_type = None
 
         # Process response data according to content-type.
-        response_data: JsonGenericType
+        response_data: desec.types.JsonGenericType
         if content_type == "text/dns":
             response_data = r.text
         elif content_type == "application/json":
@@ -652,7 +526,7 @@ class APIClient:
             mapping[label] = _url
         return mapping
 
-    def list_tokens(self) -> list[JsonTokenType]:
+    def list_tokens(self) -> list[desec.types.JsonTokenType]:
         """Return information about all current tokens.
 
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#retrieving-all-current-tokens
@@ -671,7 +545,7 @@ class APIClient:
         """
         url = f"{API_BASE_URL}/auth/tokens/"
         data = self.query("GET", url)
-        return t.cast("list[JsonTokenType]", data)
+        return t.cast("list[desec.types.JsonTokenType]", data)
 
     def create_token(
         self,
@@ -681,7 +555,7 @@ class APIClient:
         delete_domain: bool | None = None,
         allowed_subnets: list[str] | None = None,
         auto_policy: bool | None = None,
-    ) -> JsonTokenSecretType:
+    ) -> desec.types.JsonTokenSecretType:
         """Create a new authentication token.
 
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#create-additional-tokens
@@ -710,7 +584,7 @@ class APIClient:
 
         """
         url = f"{API_BASE_URL}/auth/tokens/"
-        request_data: JsonGenericType
+        request_data: desec.types.JsonGenericType
         request_data = {"name": name}
         if manage_tokens is not None:
             request_data["perm_manage_tokens"] = manage_tokens
@@ -723,7 +597,7 @@ class APIClient:
         if auto_policy is not None:
             request_data["auto_policy"] = auto_policy
         data = self.query("POST", url, request_data)
-        return t.cast("JsonTokenSecretType", data)
+        return t.cast("desec.types.JsonTokenSecretType", data)
 
     def modify_token(
         self,
@@ -734,7 +608,7 @@ class APIClient:
         delete_domain: bool | None = None,
         allowed_subnets: list[str] | None = None,
         auto_policy: bool | None = None,
-    ) -> JsonTokenType:
+    ) -> desec.types.JsonTokenType:
         """Modify an existing authentication token.
 
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#modifying-a-token
@@ -764,7 +638,7 @@ class APIClient:
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/"
-        request_data: JsonGenericType
+        request_data: desec.types.JsonGenericType
         request_data = {}
         if name is not None:
             request_data["name"] = name
@@ -779,7 +653,7 @@ class APIClient:
         if auto_policy is not None:
             request_data["auto_policy"] = auto_policy
         data = self.query("PATCH", url, request_data)
-        return t.cast("JsonTokenType", data)
+        return t.cast("desec.types.JsonTokenType", data)
 
     def delete_token(self, token_id: str) -> None:
         """Delete an authentication token.
@@ -799,7 +673,7 @@ class APIClient:
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/"
         _ = self.query("DELETE", url)
 
-    def list_token_policies(self, token_id: str) -> list[JsonTokenPolicyType]:
+    def list_token_policies(self, token_id: str) -> list[desec.types.JsonTokenPolicyType]:
         """Return a list of all policies for the given token.
 
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
@@ -820,7 +694,7 @@ class APIClient:
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/"
         data = self.query("GET", url)
-        return t.cast("list[JsonTokenPolicyType]", data)
+        return t.cast("list[desec.types.JsonTokenPolicyType]", data)
 
     def add_token_policy(
         self,
@@ -829,7 +703,7 @@ class APIClient:
         subname: str | None = None,
         rtype: str | None = None,
         perm_write: bool = False,
-    ) -> JsonTokenPolicyType:
+    ) -> desec.types.JsonTokenPolicyType:
         """Add a policy to the given token.
 
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
@@ -855,7 +729,7 @@ class APIClient:
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/"
-        request_data: JsonGenericType
+        request_data: desec.types.JsonGenericType
         request_data = {
             "domain": domain,
             "subname": subname,
@@ -863,7 +737,7 @@ class APIClient:
             "perm_write": perm_write,
         }
         data = self.query("POST", url, request_data)
-        return t.cast("JsonTokenPolicyType", data)
+        return t.cast("desec.types.JsonTokenPolicyType", data)
 
     def modify_token_policy(
         self,
@@ -873,7 +747,7 @@ class APIClient:
         subname: str | None | t.Literal[False] = False,
         rtype: str | None | t.Literal[False] = False,
         perm_write: bool | None = None,
-    ) -> JsonTokenPolicyType:
+    ) -> desec.types.JsonTokenPolicyType:
         """Modify an existing policy for the given token.
 
         See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-scoping-policies
@@ -903,7 +777,7 @@ class APIClient:
 
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
-        request_data: JsonGenericType
+        request_data: desec.types.JsonGenericType
         request_data = {}
         if domain is not False:
             request_data["domain"] = domain
@@ -914,7 +788,7 @@ class APIClient:
         if perm_write is not None:
             request_data["perm_write"] = perm_write
         data = self.query("PATCH", url, request_data)
-        return t.cast("JsonTokenPolicyType", data)
+        return t.cast("desec.types.JsonTokenPolicyType", data)
 
     def delete_token_policy(self, token_id: str, policy_id: str) -> None:
         """Delete an existing policy for the given token.
@@ -935,7 +809,7 @@ class APIClient:
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/{policy_id}/"
         _ = self.query("DELETE", url)
 
-    def list_domains(self) -> list[JsonDomainType]:
+    def list_domains(self) -> list[desec.types.JsonDomainType]:
         """Return a list of all registered domains.
 
         See https://desec.readthedocs.io/en/latest/dns/domains.html#listing-domains
@@ -951,9 +825,9 @@ class APIClient:
         """
         url = f"{API_BASE_URL}/domains/"
         data = self.query("GET", url)
-        return t.cast("list[JsonDomainType]", data)
+        return t.cast("list[desec.types.JsonDomainType]", data)
 
-    def domain_info(self, domain: str) -> JsonDomainWithKeysType:
+    def domain_info(self, domain: str) -> desec.types.JsonDomainWithKeysType:
         """Return basic information about a domain.
 
         See https://desec.readthedocs.io/en/latest/dns/domains.html#retrieving-a-specific-domain
@@ -973,9 +847,9 @@ class APIClient:
         """
         url = f"{API_BASE_URL}/domains/{domain}/"
         data = self.query("GET", url)
-        return t.cast("JsonDomainWithKeysType", data)
+        return t.cast("desec.types.JsonDomainWithKeysType", data)
 
-    def new_domain(self, domain: str) -> JsonDomainWithKeysType:
+    def new_domain(self, domain: str) -> desec.types.JsonDomainWithKeysType:
         """Create a new domain.
 
         See https://desec.readthedocs.io/en/latest/dns/domains.html#creating-a-domain
@@ -998,7 +872,7 @@ class APIClient:
         """
         url = f"{API_BASE_URL}/domains/"
         data = self.query("POST", url, data={"name": domain})
-        return t.cast("JsonDomainWithKeysType", data)
+        return t.cast("desec.types.JsonDomainWithKeysType", data)
 
     def delete_domain(self, domain: str) -> None:
         """Delete a domain.
@@ -1039,8 +913,11 @@ class APIClient:
         return t.cast("str", data)
 
     def get_records(
-        self, domain: str, rtype: DnsRecordTypeType | None = None, subname: str | None = None
-    ) -> list[JsonRRsetType]:
+        self,
+        domain: str,
+        rtype: desec.types.DnsRecordTypeType | None = None,
+        subname: str | None = None,
+    ) -> list[desec.types.JsonRRsetType]:
         """Return (a subset of) all RRsets of a domain.
 
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#retrieving-all-rrsets-in-a-zone
@@ -1065,11 +942,16 @@ class APIClient:
         url: str | None
         url = f"{API_BASE_URL}/domains/{domain}/rrsets/"
         data = self.query("GET", url, {"subname": subname, "type": rtype})
-        return t.cast("list[JsonRRsetType]", data)
+        return t.cast("list[desec.types.JsonRRsetType]", data)
 
     def add_record(
-        self, domain: str, rtype: DnsRecordTypeType, subname: str, rrset: t.Sequence[str], ttl: int
-    ) -> JsonRRsetType:
+        self,
+        domain: str,
+        rtype: desec.types.DnsRecordTypeType,
+        subname: str,
+        rrset: t.Sequence[str],
+        ttl: int,
+    ) -> desec.types.JsonRRsetType:
         """Add a new RRset.
 
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#creating-an-rrset
@@ -1100,11 +982,14 @@ class APIClient:
         data = self.query(
             "POST", url, {"subname": subname, "type": rtype, "records": rrset, "ttl": ttl}
         )
-        return t.cast("JsonRRsetType", data)
+        return t.cast("desec.types.JsonRRsetType", data)
 
     def update_bulk_record(
-        self, domain: str, rrset_list: t.Sequence[JsonRRsetWritableType], exclusive: bool = False
-    ) -> list[JsonRRsetType]:
+        self,
+        domain: str,
+        rrset_list: t.Sequence[desec.types.JsonRRsetWritableType],
+        exclusive: bool = False,
+    ) -> list[desec.types.JsonRRsetType]:
         """Update RRsets in bulk.
 
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#bulk-operations
@@ -1135,17 +1020,17 @@ class APIClient:
                 if (r["subname"], r["type"]) not in existing_records:
                     rrset_list.append({"subname": r["subname"], "type": r["type"], "records": []})
 
-        data = self.query("PATCH", url, t.cast("JsonGenericType", rrset_list))
-        return t.cast("list[JsonRRsetType]", data)
+        data = self.query("PATCH", url, t.cast("desec.types.JsonGenericType", rrset_list))
+        return t.cast("list[desec.types.JsonRRsetType]", data)
 
     def change_record(
         self,
         domain: str,
-        rtype: DnsRecordTypeType,
+        rtype: desec.types.DnsRecordTypeType,
         subname: str,
         rrset: t.Sequence[str] | None = None,
         ttl: int | None = None,
-    ) -> JsonRRsetType:
+    ) -> desec.types.JsonRRsetType:
         """Change an existing RRset.
 
         See https://desec.readthedocs.io/en/latest/dns/rrsets.html#modifying-an-rrset
@@ -1171,19 +1056,19 @@ class APIClient:
 
         """
         url = f"{API_BASE_URL}/domains/{domain}/rrsets/{subname}.../{rtype}/"
-        request_data: JsonGenericType
+        request_data: desec.types.JsonGenericType
         request_data = {}
         if rrset:
             request_data["records"] = rrset
         if ttl:
             request_data["ttl"] = ttl
         data = self.query("PATCH", url, data=request_data)
-        return t.cast("JsonRRsetType", data)
+        return t.cast("desec.types.JsonRRsetType", data)
 
     def delete_record(
         self,
         domain: str,
-        rtype: DnsRecordTypeType,
+        rtype: desec.types.DnsRecordTypeType,
         subname: str,
         rrset: t.Sequence[str] | None = None,
     ) -> None:
@@ -1228,11 +1113,11 @@ class APIClient:
     def update_record(
         self,
         domain: str,
-        rtype: DnsRecordTypeType,
+        rtype: desec.types.DnsRecordTypeType,
         subname: str,
         rrset: list[str],
         ttl: int | None = None,
-    ) -> JsonRRsetType:
+    ) -> desec.types.JsonRRsetType:
         """Change an existing RRset or create a new one.
 
         Records are added to the existing records (if any). `ttl` is used only when
@@ -1272,7 +1157,9 @@ class APIClient:
             return self.change_record(domain, rtype, subname, rrset)
 
 
-def _print_records(rrset: JsonRRsetType | JsonRRsetFromZonefileType, **kwargs: t.Any) -> None:
+def _print_records(
+    rrset: desec.types.JsonRRsetType | desec.types.JsonRRsetFromZonefileType, **kwargs: t.Any
+) -> None:
     """Print a RRset in zone file format.
 
     Args:
@@ -1286,7 +1173,8 @@ def _print_records(rrset: JsonRRsetType | JsonRRsetFromZonefileType, **kwargs: t
 
 
 def _print_rrsets(
-    rrsets: t.Sequence[JsonRRsetType | JsonRRsetFromZonefileType], **kwargs: t.Any
+    rrsets: t.Sequence[desec.types.JsonRRsetType | desec.types.JsonRRsetFromZonefileType],
+    **kwargs: t.Any,
 ) -> None:
     """Print multiple RRsets in zone file format.
 
@@ -1299,7 +1187,9 @@ def _print_rrsets(
         _print_records(rrset, **kwargs)
 
 
-def sanitize_records(rtype: DnsRecordTypeType, subname: str, rrset: list[str]) -> list[str]:
+def sanitize_records(
+    rtype: desec.types.DnsRecordTypeType, subname: str, rrset: list[str]
+) -> list[str]:
     """Check the given DNS records for common errors and return a copy with fixed data.
 
     See https://desec.readthedocs.io/en/latest/dns/rrsets.html#caveats
@@ -1339,7 +1229,7 @@ def sanitize_records(rtype: DnsRecordTypeType, subname: str, rrset: list[str]) -
 
 def parse_zone_file(
     path: str | pathlib.Path, domain: str, minimum_ttl: int = 3600
-) -> list[JsonRRsetFromZonefileType]:
+) -> list[desec.types.JsonRRsetFromZonefileType]:
     """Parse a zone file into a list of RRsets that can be supplied to the API.
 
     The list of RRsets may contain invalid records. It should be passed to
@@ -1359,7 +1249,7 @@ def parse_zone_file(
     parsed_zone = zone.from_file(path, origin=domain, relativize=False, check_origin=False)
 
     # Convert the parsed data into a dictionary and do some error detection.
-    record_list: list[JsonRRsetFromZonefileType]
+    record_list: list[desec.types.JsonRRsetFromZonefileType]
     record_list = []
     for name, rrset in parsed_zone.iterate_rdatasets():
         # Store error information of the current rrset as a dict of a human-readable
@@ -1396,16 +1286,18 @@ def parse_zone_file(
         records = [r.to_text() for r in rrset]
         try:
             records = sanitize_records(
-                t.cast("DnsRecordTypeType", rdatatype.to_text(rrset.rdtype)), subname, records
+                t.cast("desec.types.DnsRecordTypeType", rdatatype.to_text(rrset.rdtype)),
+                subname,
+                records,
             )
         except ParameterCheckError as e:
             error = {"error_msg": str(e), "error_recovered": False}
 
-        entry: JsonRRsetFromZonefileType
+        entry: desec.types.JsonRRsetFromZonefileType
         entry = {
             "name": f"{subname}.{domain}.",
             "subname": subname,
-            "type": t.cast("DnsRecordTypeType", rdatatype.to_text(rrset.rdtype)),
+            "type": t.cast("desec.types.DnsRecordTypeType", rdatatype.to_text(rrset.rdtype)),
             "records": records,
             "ttl": rrset.ttl,
         }
@@ -1417,8 +1309,8 @@ def parse_zone_file(
 
 
 def clear_errors_from_record_list(
-    record_list: t.Sequence[JsonRRsetFromZonefileType],
-) -> list[JsonRRsetFromZonefileType]:
+    record_list: t.Sequence[desec.types.JsonRRsetFromZonefileType],
+) -> list[desec.types.JsonRRsetFromZonefileType]:
     """Remove error information added by `parse_zone_file` and all items with errors.
 
     Args:
@@ -2208,7 +2100,7 @@ def _main() -> None:
                 arguments.domain,
             )
 
-            records: list[JsonRRsetWritableType]
+            records: list[desec.types.JsonRRsetWritableType]
             records = []
             for port in arguments.ports:
                 subname = f"_{port}._{arguments.protocol}.{arguments.subname}"
