@@ -72,8 +72,6 @@ ignore = [
     "D203", # one-blank-line-before-class
     "D213", # multi-line-summary-second-line
     "PT003", # pytest-extraneous-scope-function
-    "PT004", # pytest-missing-fixture-name-underscore
-    "PT005", # pytest-incorrect-fixture-name-underscore
     "PT006", # pytest-parametrize-names-wrong-type
     "SIM105", # suppressible-exception
     "SIM108", # if-else-block-instead-of-if-exp
