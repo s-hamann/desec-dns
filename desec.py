@@ -101,6 +101,7 @@ class JsonTokenType(t.TypedDict):
     """API token information."""
 
     allowed_subnets: list[str]
+    auto_policy: bool
     created: str
     id: str
     is_valid: bool
@@ -679,6 +680,7 @@ class APIClient:
         create_domain: bool | None = None,
         delete_domain: bool | None = None,
         allowed_subnets: list[str] | None = None,
+        auto_policy: bool | None = None,
     ) -> JsonTokenSecretType:
         """Create a new authentication token.
 
@@ -694,6 +696,7 @@ class APIClient:
                 value.
             allowed_subnets: Set the "allowed_subnets" attribute of the new token to this
                 value.
+            auto_policy: Set the "auto_policy" attribute of the new token to this value.
 
         Returns:
             A dictionary containing all metadata of the newly created token as well as the
@@ -717,6 +720,8 @@ class APIClient:
             request_data["perm_delete_domain"] = delete_domain
         if allowed_subnets is not None:
             request_data["allowed_subnets"] = allowed_subnets
+        if auto_policy is not None:
+            request_data["auto_policy"] = auto_policy
         data = self.query("POST", url, request_data)
         return t.cast(JsonTokenSecretType, data)
 
@@ -728,6 +733,7 @@ class APIClient:
         create_domain: bool | None = None,
         delete_domain: bool | None = None,
         allowed_subnets: list[str] | None = None,
+        auto_policy: bool | None = None,
     ) -> JsonTokenType:
         """Modify an existing authentication token.
 
@@ -744,6 +750,7 @@ class APIClient:
                 value.
             allowed_subnets: Set the "allowed_subnets" attribute of the target token to this
                 value.
+            auto_policy: Set the "auto_policy" attribute of the target token to this value.
 
         Returns:
             A dictionary containing all metadata of the changed token, not including the
@@ -769,6 +776,8 @@ class APIClient:
             request_data["perm_delete_domain"] = delete_domain
         if allowed_subnets is not None:
             request_data["allowed_subnets"] = allowed_subnets
+        if auto_policy is not None:
+            request_data["auto_policy"] = auto_policy
         data = self.query("PATCH", url, request_data)
         return t.cast(JsonTokenType, data)
 
@@ -1626,6 +1635,11 @@ def _main() -> None:
         action="append",
         help="IPv4/IPv6 addresses or subnets from which clients may authenticate with this token",
     )
+    p.add_argument(
+        "--auto-policy",
+        action="store_true",
+        help="automatically set up a permissive policy for any domains created with this token",
+    )
 
     p = p_action.add_parser("modify-token", help="modify an existing authentication token")
     p.add_argument("id", help="token id")
@@ -1675,6 +1689,19 @@ def _main() -> None:
         "--allowed-subnets",
         action="append",
         help="IPv4/IPv6 addresses or subnets from which clients may authenticate with this token",
+    )
+    p.add_argument(
+        "--auto-policy",
+        action="store_true",
+        default=None,
+        help="automatically set up a permissive policy for any domains created with this token",
+    )
+    p.add_argument(
+        "--no-auto-policy",
+        dest="auto_policy",
+        action="store_false",
+        default=None,
+        help="do not automatically set up a policy for any domains created with this token",
     )
 
     p = p_action.add_parser("delete-token", help="delete an authentication token")
@@ -2056,6 +2083,7 @@ def _main() -> None:
                 arguments.create_domain,
                 arguments.delete_domain,
                 arguments.allowed_subnets,
+                arguments.auto_policy,
             )
             print(new_token_result["token"])
 
@@ -2067,6 +2095,7 @@ def _main() -> None:
                 arguments.create_domain,
                 arguments.delete_domain,
                 arguments.allowed_subnets,
+                arguments.auto_policy,
             )
             pprint(token_result)
 
