@@ -108,6 +108,8 @@ class JsonTokenType(t.TypedDict):
     max_age: str | None
     max_unused_period: str | None
     name: str
+    perm_create_domain: bool
+    perm_delete_domain: bool
     perm_manage_tokens: bool
 
 
@@ -674,6 +676,8 @@ class APIClient:
         self,
         name: str = "",
         manage_tokens: bool | None = None,
+        create_domain: bool | None = None,
+        delete_domain: bool | None = None,
         allowed_subnets: list[str] | None = None,
     ) -> JsonTokenSecretType:
         """Create a new authentication token.
@@ -683,6 +687,10 @@ class APIClient:
         Args:
             name: Set the "name" attribute of the new token to this value.
             manage_tokens: Set the "perm_manage_tokens" attribute of the new token to this
+                value.
+            create_domain: Set the "perm_create_domain" attribute of the new token to this
+                value.
+            delete_domain: Set the "perm_delete_domain" attribute of the new token to this
                 value.
             allowed_subnets: Set the "allowed_subnets" attribute of the new token to this
                 value.
@@ -703,6 +711,10 @@ class APIClient:
         request_data = {"name": name}
         if manage_tokens is not None:
             request_data["perm_manage_tokens"] = manage_tokens
+        if create_domain is not None:
+            request_data["perm_create_domain"] = create_domain
+        if delete_domain is not None:
+            request_data["perm_delete_domain"] = delete_domain
         if allowed_subnets is not None:
             request_data["allowed_subnets"] = allowed_subnets
         data = self.query("POST", url, request_data)
@@ -713,6 +725,8 @@ class APIClient:
         token_id: str,
         name: str | None = None,
         manage_tokens: bool | None = None,
+        create_domain: bool | None = None,
+        delete_domain: bool | None = None,
         allowed_subnets: list[str] | None = None,
     ) -> JsonTokenType:
         """Modify an existing authentication token.
@@ -724,6 +738,10 @@ class APIClient:
             name: Set the "name" attribute of the target token to this value.
             manage_tokens: Set the "perm_manage_tokens" attribute of the target token to
                 this value.
+            create_domain: Set the "perm_create_domain" attribute of the new token to this
+                value.
+            delete_domain: Set the "perm_delete_domain" attribute of the new token to this
+                value.
             allowed_subnets: Set the "allowed_subnets" attribute of the target token to this
                 value.
 
@@ -745,6 +763,10 @@ class APIClient:
             request_data["name"] = name
         if manage_tokens is not None:
             request_data["perm_manage_tokens"] = manage_tokens
+        if create_domain is not None:
+            request_data["perm_create_domain"] = create_domain
+        if delete_domain is not None:
+            request_data["perm_delete_domain"] = delete_domain
         if allowed_subnets is not None:
             request_data["allowed_subnets"] = allowed_subnets
         data = self.query("PATCH", url, request_data)
@@ -1588,6 +1610,18 @@ def _main() -> None:
         help="create a token that can manage tokens",
     )
     p.add_argument(
+        "--create-domain",
+        action="store_true",
+        default=False,
+        help="create a token that can create new domains",
+    )
+    p.add_argument(
+        "--delete-domain",
+        action="store_true",
+        default=False,
+        help="create a token that can delete domains",
+    )
+    p.add_argument(
         "--allowed-subnets",
         action="append",
         help="IPv4/IPv6 addresses or subnets from which clients may authenticate with this token",
@@ -1610,6 +1644,32 @@ def _main() -> None:
         action="store_false",
         default=None,
         help="do not allow this token to manage tokens",
+    )
+    p.add_argument(
+        "--create-domain",
+        action="store_true",
+        default=None,
+        help="allow this token to create new domains",
+    )
+    p.add_argument(
+        "--no-create-domain",
+        dest="create_domain",
+        action="store_false",
+        default=None,
+        help="do not allow this token to create new domains",
+    )
+    p.add_argument(
+        "--delete-domain",
+        action="store_true",
+        default=None,
+        help="allow this token to delete domains",
+    )
+    p.add_argument(
+        "--no-delete-domain",
+        dest="delete_domain",
+        action="store_false",
+        default=None,
+        help="do not allow this token to delete domains",
     )
     p.add_argument(
         "--allowed-subnets",
@@ -1991,13 +2051,22 @@ def _main() -> None:
 
         elif arguments.action == "create-token":
             new_token_result = api_client.create_token(
-                arguments.name, arguments.manage_tokens, arguments.allowed_subnets
+                arguments.name,
+                arguments.manage_tokens,
+                arguments.create_domain,
+                arguments.delete_domain,
+                arguments.allowed_subnets,
             )
             print(new_token_result["token"])
 
         elif arguments.action == "modify-token":
             token_result = api_client.modify_token(
-                arguments.id, arguments.name, arguments.manage_tokens, arguments.allowed_subnets
+                arguments.id,
+                arguments.name,
+                arguments.manage_tokens,
+                arguments.create_domain,
+                arguments.delete_domain,
+                arguments.allowed_subnets,
             )
             pprint(token_result)
 
