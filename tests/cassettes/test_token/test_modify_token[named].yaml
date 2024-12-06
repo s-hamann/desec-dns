@@ -1,13 +1,14 @@
 interactions:
 - request:
-    body: '{"name": "", "perm_manage_tokens": false}'
+    body: '{"name": "", "perm_manage_tokens": false, "perm_create_domain": false,
+      "perm_delete_domain": false, "auto_policy": false}'
     headers:
       Accept:
       - '*/*'
       Accept-Encoding:
       - gzip, deflate
       Content-Length:
-      - '41'
+      - '121'
       Content-Type:
       - application/json
       authorization:
@@ -16,7 +17,7 @@ interactions:
     uri: https://desec.io/api/v1/auth/tokens/
   response:
     body:
-      string: '{"id":"2d87f01e-32c5-4596-916d-e7b9705706e4","created":"2024-01-01T00:00:00.000000Z","last_used":null,"max_age":null,"max_unused_period":null,"name":"","perm_manage_tokens":false,"allowed_subnets":["0.0.0.0/0","::/0"],"is_valid":true,"token":"TzNpV562ZnTimH62qGdtMNDM72dm"}'
+      string: '{"id":"285a4fc4-6ae2-4e23-9508-97c1dab7bd0b","created":"2024-01-01T00:00:00.000000Z","last_used":null,"max_age":null,"max_unused_period":null,"name":"","perm_create_domain":false,"perm_delete_domain":false,"perm_manage_tokens":false,"allowed_subnets":["0.0.0.0/0","::/0"],"auto_policy":false,"is_valid":true,"token":"anYZQtWzfeetWL2UVn3DeF3DoN3L"}'
     headers:
       Allow:
       - GET, POST, HEAD, OPTIONS
@@ -25,7 +26,7 @@ interactions:
       Connection:
       - keep-alive
       Content-Length:
-      - '273'
+      - '347'
       Content-Type:
       - application/json
       Date:
@@ -55,10 +56,10 @@ interactions:
       authorization:
       - Token XXXXXXXX
     method: PATCH
-    uri: https://desec.io/api/v1/auth/tokens/2d87f01e-32c5-4596-916d-e7b9705706e4/
+    uri: https://desec.io/api/v1/auth/tokens/285a4fc4-6ae2-4e23-9508-97c1dab7bd0b/
   response:
     body:
-      string: '{"id":"2d87f01e-32c5-4596-916d-e7b9705706e4","created":"2024-01-01T00:00:00.000000Z","last_used":null,"max_age":null,"max_unused_period":null,"name":"test-suite","perm_manage_tokens":false,"allowed_subnets":["0.0.0.0/0","::/0"],"is_valid":true}'
+      string: '{"id":"285a4fc4-6ae2-4e23-9508-97c1dab7bd0b","created":"2024-01-01T00:00:00.000000Z","last_used":null,"max_age":null,"max_unused_period":null,"name":"test-suite","perm_create_domain":false,"perm_delete_domain":false,"perm_manage_tokens":false,"allowed_subnets":["0.0.0.0/0","::/0"],"auto_policy":false,"is_valid":true}'
     headers:
       Allow:
       - GET, PUT, PATCH, DELETE, HEAD, OPTIONS
@@ -67,7 +68,7 @@ interactions:
       Connection:
       - keep-alive
       Content-Length:
-      - '244'
+      - '318'
       Content-Type:
       - application/json
       Date:
@@ -95,7 +96,7 @@ interactions:
       authorization:
       - Token XXXXXXXX
     method: DELETE
-    uri: https://desec.io/api/v1/auth/tokens/2d87f01e-32c5-4596-916d-e7b9705706e4/
+    uri: https://desec.io/api/v1/auth/tokens/285a4fc4-6ae2-4e23-9508-97c1dab7bd0b/
   response:
     body:
       string: ''

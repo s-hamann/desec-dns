@@ -12,7 +12,7 @@ interactions:
     uri: https://desec.io/api/v1/auth/tokens/
   response:
     body:
-      string: '[{"id":"01234567-890a-4bcd-ef01-23456789abcd","created":"2024-01-01T00:00:00.000000Z","last_used":"2024-01-01T00:00:00.000000Z","max_age":null,"max_unused_period":null,"name":"test-main","perm_manage_tokens":true,"allowed_subnets":["0.0.0.0/0","::/0"],"is_valid":true}]'
+      string: '[{"id":"01234567-890a-4bcd-ef01-23456789abcd","created":"2024-01-01T00:00:00.000000Z","last_used":"2024-01-01T00:00:00.000000Z","max_age":null,"max_unused_period":null,"name":"test-main","perm_create_domain":true,"perm_delete_domain":true,"perm_manage_tokens":true,"allowed_subnets":["0.0.0.0/0","::/0"],"auto_policy":false,"is_valid":true}]'
     headers:
       Allow:
       - GET, POST, HEAD, OPTIONS
@@ -21,7 +21,7 @@ interactions:
       Connection:
       - keep-alive
       Content-Length:
-      - '269'
+      - '341'
       Content-Type:
       - application/json
       Date:
@@ -54,7 +54,7 @@ interactions:
     uri: https://desec.io/api/v1/auth/tokens/
   response:
     body:
-      string: '{"id":"000553c2-a6d6-4f19-b8cf-e68ac740ec7b","created":"2024-01-01T00:00:00.000000Z","last_used":null,"max_age":null,"max_unused_period":null,"name":"","perm_manage_tokens":false,"allowed_subnets":["0.0.0.0/0","::/0"],"is_valid":true,"token":"rD9gp7ZpbhFKqsiDxec1phUCu81j"}'
+      string: '{"id":"446faa79-e268-49ac-928c-49f46c568de7","created":"2024-01-01T00:00:00.000000Z","last_used":null,"max_age":null,"max_unused_period":null,"name":"","perm_create_domain":false,"perm_delete_domain":false,"perm_manage_tokens":false,"allowed_subnets":["0.0.0.0/0","::/0"],"auto_policy":false,"is_valid":true,"token":"z8hPRrNKnU7m4KjRmqRMFpRg3oFP"}'
     headers:
       Allow:
       - GET, POST, HEAD, OPTIONS
@@ -63,7 +63,7 @@ interactions:
       Connection:
       - keep-alive
       Content-Length:
-      - '273'
+      - '347'
       Content-Type:
       - application/json
       Date:
@@ -92,7 +92,7 @@ interactions:
     uri: https://desec.io/api/v1/auth/tokens/
   response:
     body:
-      string: '[{"id":"000553c2-a6d6-4f19-b8cf-e68ac740ec7b","created":"2024-01-01T00:00:00.000000Z","last_used":null,"max_age":null,"max_unused_period":null,"name":"","perm_manage_tokens":false,"allowed_subnets":["0.0.0.0/0","::/0"],"is_valid":true},{"id":"01234567-890a-4bcd-ef01-23456789abcd","created":"2024-01-01T00:00:00.000000Z","last_used":"2024-01-01T00:00:00.000000Z","max_age":null,"max_unused_period":null,"name":"test-main","perm_manage_tokens":true,"allowed_subnets":["0.0.0.0/0","::/0"],"is_valid":true}]'
+      string: '[{"id":"446faa79-e268-49ac-928c-49f46c568de7","created":"2024-01-01T00:00:00.000000Z","last_used":null,"max_age":null,"max_unused_period":null,"name":"","perm_create_domain":false,"perm_delete_domain":false,"perm_manage_tokens":false,"allowed_subnets":["0.0.0.0/0","::/0"],"auto_policy":false,"is_valid":true},{"id":"01234567-890a-4bcd-ef01-23456789abcd","created":"2024-01-01T00:00:00.000000Z","last_used":"2024-01-01T00:00:00.000000Z","max_age":null,"max_unused_period":null,"name":"test-main","perm_create_domain":true,"perm_delete_domain":true,"perm_manage_tokens":true,"allowed_subnets":["0.0.0.0/0","::/0"],"auto_policy":false,"is_valid":true}]'
     headers:
       Allow:
       - GET, POST, HEAD, OPTIONS
@@ -101,7 +101,7 @@ interactions:
       Connection:
       - keep-alive
       Content-Length:
-      - '504'
+      - '650'
       Content-Type:
       - application/json
       Date:
@@ -129,7 +129,7 @@ interactions:
       authorization:
       - Token XXXXXXXX
     method: DELETE
-    uri: https://desec.io/api/v1/auth/tokens/000553c2-a6d6-4f19-b8cf-e68ac740ec7b/
+    uri: https://desec.io/api/v1/auth/tokens/446faa79-e268-49ac-928c-49f46c568de7/
   response:
     body:
       string: ''

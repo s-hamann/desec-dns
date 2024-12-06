@@ -17,7 +17,7 @@ interactions:
     uri: https://desec.io/api/v1/auth/tokens/
   response:
     body:
-      string: '{"id":"739a4f26-3a49-454a-9e28-d70606cdfb89","created":"2024-01-01T00:00:00.000000Z","last_used":null,"max_age":null,"max_unused_period":null,"name":"","perm_create_domain":false,"perm_delete_domain":false,"perm_manage_tokens":false,"allowed_subnets":["0.0.0.0/0","::/0"],"auto_policy":false,"is_valid":true,"token":"gMQMj8N75jC9BBfr2xU1ckb3hAan"}'
+      string: '{"id":"d1eb464e-1d5e-4f5f-b042-0e477fca82f9","created":"2024-01-01T00:00:00.000000Z","last_used":null,"max_age":null,"max_unused_period":null,"name":"","perm_create_domain":false,"perm_delete_domain":false,"perm_manage_tokens":false,"allowed_subnets":["0.0.0.0/0","::/0"],"auto_policy":false,"is_valid":true,"token":"NkaPW9EM2beFfTnBSj7xeTYKDsKj"}'
     headers:
       Allow:
       - GET, POST, HEAD, OPTIONS
@@ -43,7 +43,7 @@ interactions:
       code: 201
       message: Created
 - request:
-    body: '{"perm_manage_tokens": true}'
+    body: '{"perm_delete_domain": true}'
     headers:
       Accept:
       - '*/*'
@@ -56,10 +56,10 @@ interactions:
       authorization:
       - Token XXXXXXXX
     method: PATCH
-    uri: https://desec.io/api/v1/auth/tokens/739a4f26-3a49-454a-9e28-d70606cdfb89/
+    uri: https://desec.io/api/v1/auth/tokens/d1eb464e-1d5e-4f5f-b042-0e477fca82f9/
   response:
     body:
-      string: '{"id":"739a4f26-3a49-454a-9e28-d70606cdfb89","created":"2024-01-01T00:00:00.000000Z","last_used":null,"max_age":null,"max_unused_period":null,"name":"","perm_create_domain":false,"perm_delete_domain":false,"perm_manage_tokens":true,"allowed_subnets":["0.0.0.0/0","::/0"],"auto_policy":false,"is_valid":true}'
+      string: '{"id":"d1eb464e-1d5e-4f5f-b042-0e477fca82f9","created":"2024-01-01T00:00:00.000000Z","last_used":null,"max_age":null,"max_unused_period":null,"name":"","perm_create_domain":false,"perm_delete_domain":true,"perm_manage_tokens":false,"allowed_subnets":["0.0.0.0/0","::/0"],"auto_policy":false,"is_valid":true}'
     headers:
       Allow:
       - GET, PUT, PATCH, DELETE, HEAD, OPTIONS
@@ -96,7 +96,7 @@ interactions:
       authorization:
       - Token XXXXXXXX
     method: DELETE
-    uri: https://desec.io/api/v1/auth/tokens/739a4f26-3a49-454a-9e28-d70606cdfb89/
+    uri: https://desec.io/api/v1/auth/tokens/d1eb464e-1d5e-4f5f-b042-0e477fca82f9/
   response:
     body:
       string: ''

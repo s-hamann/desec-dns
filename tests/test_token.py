@@ -21,16 +21,28 @@ def test_list_tokens(api_client):
         {"name": "test-suite"},
         {"manage_tokens": True},
         {"manage_tokens": False},
+        {"create_domain": True},
+        {"create_domain": False},
+        {"delete_domain": True},
+        {"delete_domain": False},
         {"allowed_subnets": ["192.0.2.0/24", "2001:db8::/32"]},
         {"allowed_subnets": None},
+        {"auto_policy": True},
+        {"auto_policy": False},
     ],
     ids=[
         "simple",
         "named",
         "perm_manage_tokens",
         "no_perm_manage_tokens",
+        "perm_create_domain",
+        "no_perm_create_domain",
+        "perm_delete_domain",
+        "no_perm_delete_domain",
         "restricted_subnets",
         "all_subnets",
+        "auto_policy",
+        "no_auto_policy",
     ],
 )
 def test_create_token(request, api_client, new_token_params):
@@ -59,6 +71,10 @@ def test_create_token(request, api_client, new_token_params):
     for key, value in new_token_params.items():
         if key == "manage_tokens":
             key = "perm_manage_tokens"
+        elif key == "create_domain":
+            key = "perm_create_domain"
+        elif key == "delete_domain":
+            key = "perm_delete_domain"
         elif key == "allowed_subnets" and value is None:
             value = ["0.0.0.0/0", "::/0"]
         assert token[key] == value
@@ -72,14 +88,26 @@ def test_create_token(request, api_client, new_token_params):
         {"name": "test-suite"},
         {"manage_tokens": True},
         {"manage_tokens": False},
+        {"create_domain": True},
+        {"create_domain": False},
+        {"delete_domain": True},
+        {"delete_domain": False},
         {"allowed_subnets": ["192.0.2.0/24", "2001:db8::/32"]},
+        {"auto_policy": True},
+        {"auto_policy": False},
     ],
     ids=[
         "simple",
         "named",
         "perm_manage_tokens",
         "no_perm_manage_tokens",
+        "perm_create_domain",
+        "no_perm_create_domain",
+        "perm_delete_domain",
+        "no_perm_delete_domain",
         "restricted_subnets",
+        "auto_policy",
+        "no_auto_policy",
     ],
 )
 def test_modify_token(api_client, new_token, changed_token_params):
@@ -87,7 +115,12 @@ def test_modify_token(api_client, new_token, changed_token_params):
 
     Assert that the API returns a token according to the given parameters.
     """
-    new_token_params = {"manage_tokens": not changed_token_params.get("manage_tokens", True)}
+    new_token_params = {
+        "manage_tokens": not changed_token_params.get("manage_tokens", True),
+        "create_domain": not changed_token_params.get("create_domain", True),
+        "delete_domain": not changed_token_params.get("delete_domain", True),
+        "auto_policy": not changed_token_params.get("auto_policy", True),
+    }
     token = new_token(**new_token_params)
 
     modified_token = api_client.modify_token(token["id"], **changed_token_params)
@@ -97,12 +130,21 @@ def test_modify_token(api_client, new_token, changed_token_params):
     for key, value in changed_token_params.items():
         if key == "manage_tokens":
             key = "perm_manage_tokens"
+        elif key == "create_domain":
+            key = "perm_create_domain"
+        elif key == "delete_domain":
+            key = "perm_delete_domain"
         assert modified_token[key] == value
     # Assert that fields that were not modified did not change.
     for key in modified_token:
-        if key not in [
-            "perm_manage_tokens" if k == "manage_tokens" else k for k in changed_token_params
-        ]:
+        param = key
+        if key == "perm_manage_tokens":
+            param = "manage_tokens"
+        elif key == "perm_create_domain":
+            param = "create_domain"
+        elif key == "perm_delete_domain":
+            param = "delete_domain"
+        if param not in changed_token_params:
             assert token[key] == modified_token[key]
 
 
