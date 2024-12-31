@@ -13,6 +13,14 @@ Similarly, the project's dependencies are not part of the public API and may
 change on minor version bumps. This, too, will be noted as a breaking change in
 this file.
 
+## [1.2.0] - 2024-12-31
+
+### New Features
+* Add support for auto-scoped tokens
+
+### Fixes
+* Do not include CHANGELOG.md in wheels
+
 ## [1.1.0] - 2024-08-24
 
 ### Breaking Changes
@@ -33,5 +41,6 @@ this file.
 
 * First versioned release
 
+[1.2.0]: https://github.com/s-hamann/desec-dns/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/s-hamann/desec-dns/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/s-hamann/desec-dns/releases/tag/v1.0.0
