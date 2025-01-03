@@ -5,6 +5,7 @@ deSEC.io API client
 [![Code Quality](https://github.com/s-hamann/desec-dns/actions/workflows/code_quality.yml/badge.svg)](https://github.com/s-hamann/desec-dns/actions/workflows/code_quality.yml)
 [![codecov](https://codecov.io/gh/s-hamann/desec-dns/graph/badge.svg?token=D9ZE0GXJN0)](https://codecov.io/gh/s-hamann/desec-dns)
 [![Documentation](https://github.com/s-hamann/desec-dns/actions/workflows/docs.yml/badge.svg)](https://s-hamann.github.io/desec-dns/)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/s-hamann/desec-dns/badge)](https://scorecard.dev/viewer/?uri=github.com/s-hamann/desec-dns)
 
 This is a simple client to manage domains hosted by
 [deSEC.io](https://desec.io/) using the deSEC.io API.
