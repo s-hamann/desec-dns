@@ -1,0 +1,21 @@
+---
+name: File Encoding
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check_encoding:
+    name: Check file encoding
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check file encoding
+        run: .github/workflows/check-encoding.sh
