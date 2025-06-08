@@ -18,16 +18,17 @@ import sys
 import time
 import typing as t
 from datetime import datetime, timezone
-from enum import IntEnum
 from hashlib import sha256, sha512
 from pprint import pprint
 
 import requests
 
+import desec.exceptions
 import desec.types
 
 # For backwards compatibility, we import submodule content into the top-level scope.
 # To be removed in version 2.0.
+from desec.exceptions import *  # noqa: F403
 from desec.types import *  # noqa: F403
 
 try:
@@ -55,135 +56,6 @@ __version__ = "0.0.0"
 
 API_BASE_URL = "https://desec.io/api/v1"
 RECORD_TYPES = t.get_args(desec.types.DnsRecordTypeType)
-
-
-class ExitCode(IntEnum):
-    """Error codes use by the CLI tool and API related exceptions."""
-
-    OK = 0
-    GENERIC_ERROR = 1
-    INVALID_PARAMETERS = 3
-    API = 4
-    AUTH = 5
-    NOT_FOUND = 6
-    TLSA_CHECK = 7
-    RATE_LIMIT = 8
-    PERMISSION = 9
-
-
-class DesecClientError(Exception):
-    """Exception for all errors within the client."""
-
-    error_code = ExitCode.GENERIC_ERROR
-
-
-class ParameterCheckError(DesecClientError):
-    """Exception for parameter consistency check errors."""
-
-    error_code = ExitCode.INVALID_PARAMETERS
-
-
-class TLSACheckError(DesecClientError):
-    """Exception for TLSA record setup consistency check errors."""
-
-    error_code = ExitCode.TLSA_CHECK
-
-
-class APIExpectationError(DesecClientError):
-    """Exception for errors that are caused by unmet expectations in API responses."""
-
-    error_code = ExitCode.GENERIC_ERROR
-
-
-class APIError(DesecClientError):
-    """Exception for errors returned by the API.
-
-    If initialized with a HTTP response, an attempt is made to parse error information from
-    the response and include it in the string representation of this exception, replacing
-    the `{detail}` placeholder in the message template.
-
-    Args:
-        response: HTTP response from the deSEC API that caused this exception.
-
-    """
-
-    error_code = ExitCode.API
-    message_template = "Unexpected error code {code}: {detail}"
-
-    def __init__(self, response: requests.Response):
-        self._response = response
-
-    def __str__(self) -> str:
-        """Return a string representation of this exception.
-
-        The formatting is based on the message template and takes the HTTP response into
-        account.
-        The message template may contain the following placeholders:
-        * `code`: Replaced by the HTTP status code.
-        * `detail`: Replaced by the error message from the HTTP response, if it can be
-            parsed.
-
-        Returns:
-            A human-readable text representation of the error condition.
-
-        """
-        if self._response.headers["Content-Type"] == "application/json":
-            json_data = self._response.json()
-            if not isinstance(json_data, list):
-                json_data = [json_data]
-            detail = ""
-            for entry in json_data:
-                try:
-                    detail += t.cast("dict[t.Literal['detail'], str]", entry)["detail"] + "\n"
-                except KeyError:
-                    for attribute, messages in entry.items():
-                        detail += attribute + ":\n  " + "  \n".join(messages) + "\n"
-            detail = detail.rstrip()
-        else:
-            detail = self._response.text
-        return self.message_template.format(code=self._response.status_code, detail=detail)
-
-
-class AuthenticationError(APIError):
-    """Exception for authentication failure."""
-
-    error_code = ExitCode.AUTH
-    message_template = "Authentication error: {detail}"
-
-
-class NotFoundError(APIError):
-    """Exception when data can not be found."""
-
-    error_code = ExitCode.NOT_FOUND
-    message_template = "{detail}"
-
-
-class ParameterError(APIError):
-    """Exception for invalid parameters, such as DNS records."""
-
-    error_code = ExitCode.INVALID_PARAMETERS
-    message_template = "Invalid parameter(s):\n{detail}"
-
-
-class ConflictError(APIError):
-    """Exception for conflicts returned by the API."""
-
-    error_code = ExitCode.INVALID_PARAMETERS
-    message_template = "Conflict:\n{detail}"
-
-
-class RateLimitError(APIError):
-    """Exception for API rate limits."""
-
-    error_code = ExitCode.RATE_LIMIT
-    message_template = "Rate limited: {detail}"
-
-
-class TokenPermissionError(APIError):
-    """Exception for API insufficient token permissions."""
-
-    error_code = ExitCode.PERMISSION
-    message_template = "Restricted token: {detail}"
 
 
 class TokenAuth(requests.auth.AuthBase):
@@ -436,10 +308,10 @@ class APIClient:
                 except (KeyError, ValueError) as e:  # pragma: no cover
                     # Retry-After header is missing or not an integer. This should never
                     # happen.
-                    raise RateLimitError(response=r) from e
+                    raise desec.exceptions.RateLimitError(response=r) from e
             else:
                 # Reached retry_limit (or it is 0) without any other response than 429.
-                raise RateLimitError(response=r)
+                raise desec.exceptions.RateLimitError(response=r)
 
             # Handle pagination. The API returns a "Link" header if the query requires
             # pagination. If the status code is 400, that means we did not request
@@ -463,17 +335,17 @@ class APIClient:
                 break
 
         if r.status_code == 400:
-            raise ParameterError(response=r)
+            raise desec.exceptions.ParameterError(response=r)
         elif r.status_code == 401:
-            raise AuthenticationError(response=r)
+            raise desec.exceptions.AuthenticationError(response=r)
         elif r.status_code == 403:
-            raise TokenPermissionError(response=r)
+            raise desec.exceptions.TokenPermissionError(response=r)
         elif r.status_code == 404:
-            raise NotFoundError(response=r)
+            raise desec.exceptions.NotFoundError(response=r)
         elif r.status_code == 409:
-            raise ConflictError(response=r)
+            raise desec.exceptions.ConflictError(response=r)
         elif r.status_code >= 400:  # pragma: no cover
-            raise APIError(response=r)
+            raise desec.exceptions.APIError(response=r)
 
         # Get Header: Content-Type
         try:
@@ -520,7 +392,7 @@ class APIClient:
             _url, label = link.split("; ")
             m = re.search('rel="(.*)"', label)
             if m is None:
-                raise APIExpectationError("Unexpected format in Link header")
+                raise desec.exceptions.APIExpectationError("Unexpected format in Link header")
             label = m.group(1)
             _url = _url[1:-1]
             mapping[label] = _url
@@ -1147,7 +1019,7 @@ class APIClient:
         if not data:
             # There is no entry, simply create a new one
             if ttl is None:
-                raise ParameterCheckError(
+                raise desec.exceptions.ParameterCheckError(
                     f"Missing TTL for new {rtype} record {subname}.{domain}."
                 )
             return self.add_record(domain, rtype, subname, rrset, ttl)
@@ -1211,16 +1083,18 @@ def sanitize_records(
     """
     if rtype == "CNAME" and rrset and len(rrset) > 1:
         # Multiple CNAME records in the same rrset are not legal.
-        raise ParameterCheckError("Multiple CNAME records are not allowed.")
+        raise desec.exceptions.ParameterCheckError("Multiple CNAME records are not allowed.")
     if rtype in ("CNAME", "MX", "NS") and rrset:
         # CNAME and MX records must end in a .
         rrset = [r + "." if r[-1] != "." else r for r in rrset]
     if rtype == "CNAME" and subname == "":
         # CNAME in the zone apex can break the zone
-        raise ParameterCheckError("CNAME records in the zone apex are not allowed.")
+        raise desec.exceptions.ParameterCheckError(
+            "CNAME records in the zone apex are not allowed."
+        )
     if rtype == "NS" and "*" in subname:
         # Wildcard NS records do not play well with DNSSEC
-        raise ParameterCheckError("Wildcard NS records are not allowed.")
+        raise desec.exceptions.ParameterCheckError("Wildcard NS records are not allowed.")
     if rtype == "TXT" and rrset:
         # TXT records must be in ""
         rrset = [f'"{r}"' if r[0] != '"' or r[-1] != '"' else r for r in rrset]
@@ -1290,7 +1164,7 @@ def parse_zone_file(
                 subname,
                 records,
             )
-        except ParameterCheckError as e:
+        except desec.exceptions.ParameterCheckError as e:
             error = {"error_msg": str(e), "error_recovered": False}
 
         entry: desec.types.JsonRRsetFromZonefileType
@@ -1375,16 +1249,18 @@ def tlsa_record(
     if check:
         # Check certificate expiration.
         if cert.not_valid_after_utc <= datetime.now(timezone.utc):
-            raise TLSACheckError(f"Certificate expired on {cert.not_valid_after_utc}")
+            raise desec.exceptions.TLSACheckError(
+                f"Certificate expired on {cert.not_valid_after_utc}"
+            )
         # Check is usage matches the certificate's CA status.
         is_ca_cert = cert.extensions.get_extension_for_class(x509.BasicConstraints).value.ca
         if is_ca_cert and usage not in ["PKIX-TA", "DANE-TA"]:
-            raise TLSACheckError(
+            raise desec.exceptions.TLSACheckError(
                 "CA certificate given for end entity usage. Please select a "
                 "different certificate or set usage to PKIX-TA or DANE-TA."
             )
         elif not is_ca_cert and usage not in ["PKIX-EE", "DANE-EE"]:
-            raise TLSACheckError(
+            raise desec.exceptions.TLSACheckError(
                 "Non-CA certificate given for CA usage. Please select a "
                 "different certificate or set usage to PKIX-EE or DANE-EE."
             )
@@ -1400,7 +1276,9 @@ def tlsa_record(
                     break
             else:
                 sans = ", ".join(san.value.get_values_for_type(x509.DNSName))
-                raise TLSACheckError(f"Certificate is valid for {sans}, but not {target_name}.")
+                raise desec.exceptions.TLSACheckError(
+                    f"Certificate is valid for {sans}, but not {target_name}."
+                )
 
     # Determine what to put in the TLSA record.
     if selector == "SPKI":
@@ -2144,7 +2022,7 @@ def _main() -> None:
             # Create the domain if it does not exist.
             try:
                 api_client.domain_info(arguments.domain)
-            except NotFoundError:
+            except desec.exceptions.NotFoundError:
                 api_client.new_domain(arguments.domain)
 
             rrsets_result = api_client.update_bulk_record(
@@ -2176,7 +2054,7 @@ def _main() -> None:
                 )
                 _print_rrsets(rrsets_result)
 
-    except DesecClientError as e:
+    except desec.exceptions.DesecClientError as e:
         print(str(e))
         sys.exit(e.error_code)
 
