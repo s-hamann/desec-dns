@@ -263,7 +263,7 @@ class APIError(DesecClientError):
             detail = ""
             for entry in json_data:
                 try:
-                    detail += t.cast(dict[t.Literal["detail"], str], entry)["detail"] + "\n"
+                    detail += t.cast("dict[t.Literal['detail'], str]", entry)["detail"] + "\n"
                 except KeyError:
                     for attribute, messages in entry.items():
                         detail += attribute + ":\n  " + "  \n".join(messages) + "\n"
@@ -671,7 +671,7 @@ class APIClient:
         """
         url = f"{API_BASE_URL}/auth/tokens/"
         data = self.query("GET", url)
-        return t.cast(list[JsonTokenType], data)
+        return t.cast("list[JsonTokenType]", data)
 
     def create_token(
         self,
@@ -723,7 +723,7 @@ class APIClient:
         if auto_policy is not None:
             request_data["auto_policy"] = auto_policy
         data = self.query("POST", url, request_data)
-        return t.cast(JsonTokenSecretType, data)
+        return t.cast("JsonTokenSecretType", data)
 
     def modify_token(
         self,
@@ -779,7 +779,7 @@ class APIClient:
         if auto_policy is not None:
             request_data["auto_policy"] = auto_policy
         data = self.query("PATCH", url, request_data)
-        return t.cast(JsonTokenType, data)
+        return t.cast("JsonTokenType", data)
 
     def delete_token(self, token_id: str) -> None:
         """Delete an authentication token.
@@ -820,7 +820,7 @@ class APIClient:
         """
         url = f"{API_BASE_URL}/auth/tokens/{token_id}/policies/rrsets/"
         data = self.query("GET", url)
-        return t.cast(list[JsonTokenPolicyType], data)
+        return t.cast("list[JsonTokenPolicyType]", data)
 
     def add_token_policy(
         self,
@@ -863,7 +863,7 @@ class APIClient:
             "perm_write": perm_write,
         }
         data = self.query("POST", url, request_data)
-        return t.cast(JsonTokenPolicyType, data)
+        return t.cast("JsonTokenPolicyType", data)
 
     def modify_token_policy(
         self,
@@ -914,7 +914,7 @@ class APIClient:
         if perm_write is not None:
             request_data["perm_write"] = perm_write
         data = self.query("PATCH", url, request_data)
-        return t.cast(JsonTokenPolicyType, data)
+        return t.cast("JsonTokenPolicyType", data)
 
     def delete_token_policy(self, token_id: str, policy_id: str) -> None:
         """Delete an existing policy for the given token.
@@ -951,7 +951,7 @@ class APIClient:
         """
         url = f"{API_BASE_URL}/domains/"
         data = self.query("GET", url)
-        return t.cast(list[JsonDomainType], data)
+        return t.cast("list[JsonDomainType]", data)
 
     def domain_info(self, domain: str) -> JsonDomainWithKeysType:
         """Return basic information about a domain.
@@ -973,7 +973,7 @@ class APIClient:
         """
         url = f"{API_BASE_URL}/domains/{domain}/"
         data = self.query("GET", url)
-        return t.cast(JsonDomainWithKeysType, data)
+        return t.cast("JsonDomainWithKeysType", data)
 
     def new_domain(self, domain: str) -> JsonDomainWithKeysType:
         """Create a new domain.
@@ -998,7 +998,7 @@ class APIClient:
         """
         url = f"{API_BASE_URL}/domains/"
         data = self.query("POST", url, data={"name": domain})
-        return t.cast(JsonDomainWithKeysType, data)
+        return t.cast("JsonDomainWithKeysType", data)
 
     def delete_domain(self, domain: str) -> None:
         """Delete a domain.
@@ -1036,7 +1036,7 @@ class APIClient:
         """
         url = f"{API_BASE_URL}/domains/{domain}/zonefile/"
         data = self.query("GET", url)
-        return t.cast(str, data)
+        return t.cast("str", data)
 
     def get_records(
         self, domain: str, rtype: DnsRecordTypeType | None = None, subname: str | None = None
@@ -1065,7 +1065,7 @@ class APIClient:
         url: str | None
         url = f"{API_BASE_URL}/domains/{domain}/rrsets/"
         data = self.query("GET", url, {"subname": subname, "type": rtype})
-        return t.cast(list[JsonRRsetType], data)
+        return t.cast("list[JsonRRsetType]", data)
 
     def add_record(
         self, domain: str, rtype: DnsRecordTypeType, subname: str, rrset: t.Sequence[str], ttl: int
@@ -1100,7 +1100,7 @@ class APIClient:
         data = self.query(
             "POST", url, {"subname": subname, "type": rtype, "records": rrset, "ttl": ttl}
         )
-        return t.cast(JsonRRsetType, data)
+        return t.cast("JsonRRsetType", data)
 
     def update_bulk_record(
         self, domain: str, rrset_list: t.Sequence[JsonRRsetWritableType], exclusive: bool = False
@@ -1135,8 +1135,8 @@ class APIClient:
                 if (r["subname"], r["type"]) not in existing_records:
                     rrset_list.append({"subname": r["subname"], "type": r["type"], "records": []})
 
-        data = self.query("PATCH", url, t.cast(JsonGenericType, rrset_list))
-        return t.cast(list[JsonRRsetType], data)
+        data = self.query("PATCH", url, t.cast("JsonGenericType", rrset_list))
+        return t.cast("list[JsonRRsetType]", data)
 
     def change_record(
         self,
@@ -1178,7 +1178,7 @@ class APIClient:
         if ttl:
             request_data["ttl"] = ttl
         data = self.query("PATCH", url, data=request_data)
-        return t.cast(JsonRRsetType, data)
+        return t.cast("JsonRRsetType", data)
 
     def delete_record(
         self,
@@ -1396,7 +1396,7 @@ def parse_zone_file(
         records = [r.to_text() for r in rrset]
         try:
             records = sanitize_records(
-                t.cast(DnsRecordTypeType, rdatatype.to_text(rrset.rdtype)), subname, records
+                t.cast("DnsRecordTypeType", rdatatype.to_text(rrset.rdtype)), subname, records
             )
         except ParameterCheckError as e:
             error = {"error_msg": str(e), "error_recovered": False}
@@ -1405,7 +1405,7 @@ def parse_zone_file(
         entry = {
             "name": f"{subname}.{domain}.",
             "subname": subname,
-            "type": t.cast(DnsRecordTypeType, rdatatype.to_text(rrset.rdtype)),
+            "type": t.cast("DnsRecordTypeType", rdatatype.to_text(rrset.rdtype)),
             "records": records,
             "ttl": rrset.ttl,
         }
