@@ -33,7 +33,7 @@ zonefiles = ["dnspython"]
 all = ["cryptography", "dnspython"]
 
 [tool.poetry.scripts]
-desec = "desec:_main"
+desec = "desec.cli:main"
 
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.4.5"
