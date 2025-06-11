@@ -18,6 +18,7 @@ import typing as t
 from pprint import pprint
 
 import desec
+import desec.api
 import desec.exceptions
 import desec.types
 
@@ -599,9 +600,9 @@ def main() -> None:
         with open(os.path.expanduser(arguments.token_file)) as f:
             token = f.readline().strip()
     if arguments.block:
-        api_client = desec.APIClient(token)
+        api_client = desec.api.APIClient(token)
     else:
-        api_client = desec.APIClient(token, retry_limit=0)
+        api_client = desec.api.APIClient(token, retry_limit=0)
     del token
 
     try:
