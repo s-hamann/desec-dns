@@ -22,6 +22,7 @@ import desec.api
 import desec.exceptions
 import desec.tlsa
 import desec.types
+import desec.utils
 
 # Importing from this submodule is discouraged as it is not part of the package's public
 # API. Set __all__ to the empty list to reflect that.
@@ -577,7 +578,7 @@ def main() -> None:
         "--clear", action="store_true", help="remove all existing records before import"
     )
 
-    if desec.dnspython_available:
+    if desec.utils.DNSPYTHON_AVAILABLE:
         p = p_action.add_parser("import-zone", help="import records from a zone file")
         p.add_argument("domain", help="domain name")
         p.add_argument("-f", "--file", required=True, help="target file name")
@@ -685,7 +686,7 @@ def main() -> None:
                 print_records(rrset)
 
         elif arguments.action == "add-record":
-            arguments.records = desec.sanitize_records(
+            arguments.records = desec.utils.sanitize_records(
                 arguments.type, arguments.subname, arguments.records
             )
             rrset_result = api_client.add_record(
@@ -698,7 +699,7 @@ def main() -> None:
             print_records(rrset_result)
 
         elif arguments.action == "change-record":
-            arguments.records = desec.sanitize_records(
+            arguments.records = desec.utils.sanitize_records(
                 arguments.type, arguments.subname, arguments.records
             )
             rrset_result = api_client.change_record(
@@ -711,7 +712,7 @@ def main() -> None:
             print_records(rrset_result)
 
         elif arguments.action == "update-record":
-            arguments.records = desec.sanitize_records(
+            arguments.records = desec.utils.sanitize_records(
                 arguments.type, arguments.subname, arguments.records
             )
             rrset_result = api_client.update_record(
@@ -725,7 +726,7 @@ def main() -> None:
 
         elif arguments.action == "delete-record":
             if arguments.records:
-                arguments.records = desec.sanitize_records(
+                arguments.records = desec.utils.sanitize_records(
                     arguments.type, arguments.subname, arguments.records
                 )
             api_client.delete_record(
