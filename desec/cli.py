@@ -20,6 +20,7 @@ from pprint import pprint
 import desec
 import desec.api
 import desec.exceptions
+import desec.tlsa
 import desec.types
 
 # Importing from this submodule is discouraged as it is not part of the package's public
@@ -408,7 +409,7 @@ def main() -> None:
         help="set the record's TTL, if creating a new record set (default: %(default)i seconds)",
     )
 
-    if desec.cryptography_available:
+    if desec.tlsa.CRYPTOGRAPHY_AVAILABLE:
         p = p_action.add_parser(
             "add-tlsa",
             help="add a TLSA record for a X.509 certificate (aka DANE), keeping any existing "
@@ -439,33 +440,33 @@ def main() -> None:
         )
         p.add_argument(
             "--usage",
-            type=desec.TLSAUsage,
-            default=desec.TLSAUsage("DANE-EE"),
+            type=desec.tlsa.TLSAUsage,
+            default=desec.tlsa.TLSAUsage("DANE-EE"),
             choices=[
-                desec.TLSAUsage("PKIX-TA"),
-                desec.TLSAUsage("PKIX-EE"),
-                desec.TLSAUsage("DANE-TA"),
-                desec.TLSAUsage("DANE-EE"),
+                desec.tlsa.TLSAUsage("PKIX-TA"),
+                desec.tlsa.TLSAUsage("PKIX-EE"),
+                desec.tlsa.TLSAUsage("DANE-TA"),
+                desec.tlsa.TLSAUsage("DANE-EE"),
             ],
             help="TLSA certificate usage information. Accepts numeric values or RFC 7218 symbolic "
             "names (default: %(default)s)",
         )
         p.add_argument(
             "--selector",
-            type=desec.TLSASelector,
-            default=desec.TLSASelector("Cert"),
-            choices=[desec.TLSASelector("Cert"), desec.TLSASelector("SPKI")],
+            type=desec.tlsa.TLSASelector,
+            default=desec.tlsa.TLSASelector("Cert"),
+            choices=[desec.tlsa.TLSASelector("Cert"), desec.tlsa.TLSASelector("SPKI")],
             help="TLSA selector. Accepts numeric values or RFC 7218 symbolic names "
             "(default: %(default)s)",
         )
         p.add_argument(
             "--match-type",
-            type=desec.TLSAMatchType,
-            default=desec.TLSAMatchType("SHA2-256"),
+            type=desec.tlsa.TLSAMatchType,
+            default=desec.tlsa.TLSAMatchType("SHA2-256"),
             choices=[
-                desec.TLSAMatchType("Full"),
-                desec.TLSAMatchType("SHA2-256"),
-                desec.TLSAMatchType("SHA2-512"),
+                desec.tlsa.TLSAMatchType("Full"),
+                desec.tlsa.TLSAMatchType("SHA2-256"),
+                desec.tlsa.TLSAMatchType("SHA2-512"),
             ],
             help="TLSA matching type. Accepts numeric values or RFC 7218 symbolic names "
             "(default: %(default)s)",
@@ -515,33 +516,33 @@ def main() -> None:
         )
         p.add_argument(
             "--usage",
-            type=desec.TLSAUsage,
-            default=desec.TLSAUsage("DANE-EE"),
+            type=desec.tlsa.TLSAUsage,
+            default=desec.tlsa.TLSAUsage("DANE-EE"),
             choices=[
-                desec.TLSAUsage("PKIX-TA"),
-                desec.TLSAUsage("PKIX-EE"),
-                desec.TLSAUsage("DANE-TA"),
-                desec.TLSAUsage("DANE-EE"),
+                desec.tlsa.TLSAUsage("PKIX-TA"),
+                desec.tlsa.TLSAUsage("PKIX-EE"),
+                desec.tlsa.TLSAUsage("DANE-TA"),
+                desec.tlsa.TLSAUsage("DANE-EE"),
             ],
             help="TLSA certificate usage information. Accepts numeric values or RFC 7218 symbolic "
             "names (default: %(default)s)",
         )
         p.add_argument(
             "--selector",
-            type=desec.TLSASelector,
-            default=desec.TLSASelector("Cert"),
-            choices=[desec.TLSASelector("Cert"), desec.TLSASelector("SPKI")],
+            type=desec.tlsa.TLSASelector,
+            default=desec.tlsa.TLSASelector("Cert"),
+            choices=[desec.tlsa.TLSASelector("Cert"), desec.tlsa.TLSASelector("SPKI")],
             help="TLSA selector. Accepts numeric values or RFC 7218 symbolic names "
             "(default: %(default)s)",
         )
         p.add_argument(
             "--match-type",
-            type=desec.TLSAMatchType,
-            default=desec.TLSAMatchType("SHA2-256"),
+            type=desec.tlsa.TLSAMatchType,
+            default=desec.tlsa.TLSAMatchType("SHA2-256"),
             choices=[
-                desec.TLSAMatchType("Full"),
-                desec.TLSAMatchType("SHA2-256"),
-                desec.TLSAMatchType("SHA2-512"),
+                desec.tlsa.TLSAMatchType("Full"),
+                desec.tlsa.TLSAMatchType("SHA2-256"),
+                desec.tlsa.TLSAMatchType("SHA2-512"),
             ],
             help="TLSA matching type. Accepts numeric values or RFC 7218 symbolic names "
             "(default: %(default)s)",
@@ -732,7 +733,7 @@ def main() -> None:
             )
 
         elif arguments.action == "add-tlsa" or arguments.action == "set-tlsa":
-            record = desec.tlsa_record(
+            record = desec.tlsa.tlsa_record(
                 arguments.certificate,
                 arguments.usage,
                 arguments.selector,
