@@ -96,12 +96,12 @@ optional arguments:
 ### Python Module
 
 This project can also be used as a Python module.
-To get started, import the `desec` module and initialize an instance of `APIClient`:
+To get started, import the `desec.api` module and initialize an instance of `APIClient`:
 
 ```py
-import desec
+import desec.api
 
-api_client = desec.APIClient("my-secret-token-value")
+api_client = desec.api.APIClient("my-secret-token-value")
 ```
 
 Refer to the documentation for anything beyond that.
@@ -147,10 +147,6 @@ with desec installed. That is especially recommended if you want to
 and necessary tools for formatting, linting, and type-checking. If you want to work on
 features that require optional dependencies, `install` the corresponding extras, e.g.:
 `poetry install --extras=tlsa` or just go for `poetry install --all-extras`.
-
-Finally, you may skip package installation altogether and just get the Python script and
-place it in a convenient location. Be warned that this method is deprecated and may cease
-to work without further notice.
 
 Related Work
 ============
