@@ -1,6 +1,7 @@
 import pytest
 
-import desec
+import desec.exceptions
+import desec.utils
 
 
 @pytest.mark.parametrize(
@@ -20,7 +21,7 @@ def test_sanitize_records_valid(rtype, subname, records):
 
     Assert that output is the unchanged input.
     """
-    rrset = desec.sanitize_records(rtype, subname, records)
+    rrset = desec.utils.sanitize_records(rtype, subname, records)
 
     assert rrset == records
 
@@ -44,7 +45,7 @@ def test_sanitize_records_fixable(rtype, subname, records, expected):
 
     Assert that the output is fixed.
     """
-    rrset = desec.sanitize_records(rtype, subname, records)
+    rrset = desec.utils.sanitize_records(rtype, subname, records)
 
     assert rrset == expected
 
@@ -63,5 +64,5 @@ def test_sanitize_records_unfixable(rtype, subname, records):
 
     Assert that an appropriate exception is raised.
     """
-    with pytest.raises(desec.ParameterCheckError):
-        desec.sanitize_records(rtype, subname, records)
+    with pytest.raises(desec.exceptions.ParameterCheckError):
+        desec.utils.sanitize_records(rtype, subname, records)

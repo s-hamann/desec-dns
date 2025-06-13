@@ -1,4 +1,4 @@
-import desec
+import desec.utils
 
 
 def test_parse_zone_file():
@@ -54,7 +54,7 @@ def test_parse_zone_file():
         },
     ]
 
-    rrsets = desec.parse_zone_file(file, domain, minimum_ttl)
+    rrsets = desec.utils.parse_zone_file(file, domain, minimum_ttl)
 
     assert len(rrsets) == len(correct_rrsets)
     for record in rrsets:
@@ -120,7 +120,7 @@ def test_parse_zone_file_low_ttl():
         },
     ]
 
-    rrsets = desec.parse_zone_file(file, domain, minimum_ttl)
+    rrsets = desec.utils.parse_zone_file(file, domain, minimum_ttl)
 
     assert len(rrsets) == len(correct_rrsets)
     for record in rrsets:
@@ -177,7 +177,7 @@ def test_parse_zone_file_invalid():
         },
     ]
 
-    rrsets = desec.parse_zone_file(file, domain, minimum_ttl)
+    rrsets = desec.utils.parse_zone_file(file, domain, minimum_ttl)
 
     assert len(rrsets) == len(correct_rrsets)
     for record in rrsets:
@@ -234,7 +234,7 @@ def test_clear_errors_from_record_list_no_errors():
         },
     ]
 
-    cleared_rrsets = desec.clear_errors_from_record_list(rrsets)
+    cleared_rrsets = desec.utils.clear_errors_from_record_list(rrsets)
 
     assert cleared_rrsets == rrsets
 
@@ -357,6 +357,6 @@ def test_clear_errors_from_record_list_errors():
         },
     ]
 
-    cleared_rrsets = desec.clear_errors_from_record_list(rrsets)
+    cleared_rrsets = desec.utils.clear_errors_from_record_list(rrsets)
 
     assert cleared_rrsets == correct_rrsets

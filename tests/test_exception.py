@@ -1,6 +1,6 @@
 import pytest
 
-import desec
+import desec.exceptions
 
 
 @pytest.mark.vcr
@@ -11,7 +11,7 @@ def test_not_found_error(api_client):
     """
     domain = "not-a-valid-domain-for-this-account.test"
 
-    with pytest.raises(desec.NotFoundError) as excinfo:
+    with pytest.raises(desec.exceptions.NotFoundError) as excinfo:
         api_client.domain_info(domain)
 
     assert "Not found." in str(excinfo.value)
@@ -25,7 +25,7 @@ def test_not_found_error_non_json(api_client):
     """
     domain = "not-a-valid-domain-for-this-account.test"
 
-    with pytest.raises(desec.NotFoundError) as excinfo:
+    with pytest.raises(desec.exceptions.NotFoundError) as excinfo:
         api_client.export_zonefile_domain(domain)
 
     assert "Not found." in str(excinfo.value)
@@ -38,7 +38,7 @@ def test_parameter_error_single(api_client, domain):
     Assert that the formatted exception contains the error message returned by the API.
     """
 
-    with pytest.raises(desec.ParameterError) as excinfo:
+    with pytest.raises(desec.exceptions.ParameterError) as excinfo:
         api_client.add_record(domain, "TEST", "test", ["test"], 1)
 
     assert "The TEST RR set type is currently unsupported." in str(excinfo.value)
@@ -57,7 +57,7 @@ def test_parameter_error_list(api_client, domain):
         {"type": "TEST", "subname": "test", "records": ["test"], "ttl": 1},
     ]
 
-    with pytest.raises(desec.ParameterError) as excinfo:
+    with pytest.raises(desec.exceptions.ParameterError) as excinfo:
         api_client.update_bulk_record(domain, rrsets, exclusive=False)
 
     assert "Record content for type A malformed: Text input is malformed." in str(excinfo.value)

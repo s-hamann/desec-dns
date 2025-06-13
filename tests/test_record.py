@@ -1,6 +1,6 @@
 import pytest
 
-import desec
+import desec.exceptions
 
 
 @pytest.mark.vcr
@@ -68,7 +68,7 @@ def test_add_record_invalid_type(api_client, domain):
 
     Assert that an appropriate exception is raised.
     """
-    with pytest.raises(desec.ParameterError):
+    with pytest.raises(desec.exceptions.ParameterError):
         api_client.add_record(domain, "INVALID", "", "test-data", 3600)
 
 
@@ -226,7 +226,7 @@ def test_change_record_missing(api_client, domain):
 
     Assert that an appropriate exception is raised.
     """
-    with pytest.raises(desec.NotFoundError):
+    with pytest.raises(desec.exceptions.NotFoundError):
         api_client.change_record(domain, "A", "not-an-existing-subname", ttl=3600)
 
 
@@ -321,5 +321,5 @@ def test_update_record_new_no_ttl(api_client, domain):
 
     Assert that an appropriate exception is raised.
     """
-    with pytest.raises(desec.ParameterCheckError):
+    with pytest.raises(desec.exceptions.ParameterCheckError):
         api_client.update_record(domain, "A", "test", ["192.0.2.1"])

@@ -1,6 +1,7 @@
 import pytest
 
-import desec
+import desec.exceptions
+import desec.tlsa
 
 
 @pytest.mark.parametrize("value", ["PKIX-TA", "PKIX-EE", "DANE-TA", "DANE-EE", 0, 1, 2, 3])
@@ -20,12 +21,12 @@ def test_tlsausage(value):
         3: "DANE-EE",
     }
 
-    usage = desec.TLSAUsage(value)
+    usage = desec.tlsa.TLSAUsage(value)
 
     assert tlsa_usage_map[repr(usage)] == int(usage)
     assert usage == repr(usage)
     assert usage == int(usage)
-    assert usage == desec.TLSAUsage(tlsa_usage_map[value])
+    assert usage == desec.tlsa.TLSAUsage(tlsa_usage_map[value])
 
 
 @pytest.mark.parametrize("value", ["CERT", "SPKI", 0, 1])
@@ -41,12 +42,12 @@ def test_tlsaselector(value):
         1: "SPKI",
     }
 
-    selector = desec.TLSASelector(value)
+    selector = desec.tlsa.TLSASelector(value)
 
     assert tlsa_selector_map[repr(selector)] == int(selector)
     assert selector == repr(selector)
     assert selector == int(selector)
-    assert selector == desec.TLSASelector(tlsa_selector_map[value])
+    assert selector == desec.tlsa.TLSASelector(tlsa_selector_map[value])
 
 
 @pytest.mark.parametrize("value", ["FULL", "SHA2-256", "SHA2-512", 0, 1, 2])
@@ -64,12 +65,12 @@ def test_tlsamatchtype(value):
         2: "SHA2-512",
     }
 
-    matchtype = desec.TLSAMatchType(value)
+    matchtype = desec.tlsa.TLSAMatchType(value)
 
     assert tlsa_matchtype_map[repr(matchtype)] == int(matchtype)
     assert matchtype == repr(matchtype)
     assert matchtype == int(matchtype)
-    assert matchtype == desec.TLSAMatchType(tlsa_matchtype_map[value])
+    assert matchtype == desec.tlsa.TLSAMatchType(tlsa_matchtype_map[value])
 
 
 @pytest.mark.parametrize("cert_format", ["PEM", "DER"])
@@ -146,11 +147,11 @@ def test_tlsa_record(cert_format, usage, selector, match_type, check, cert_domai
         "61fb78fab229df80d65e48e6f4b187be8ce2577414ae018b08ee7a8c0a8049b1",
     }
 
-    usage = desec.TLSAUsage(usage)
-    selector = desec.TLSASelector(selector)
-    match_type = desec.TLSAMatchType(match_type)
+    usage = desec.tlsa.TLSAUsage(usage)
+    selector = desec.tlsa.TLSASelector(selector)
+    match_type = desec.tlsa.TLSAMatchType(match_type)
 
-    rdata = desec.tlsa_record(file, usage, selector, match_type, check, subname, cert_domain)
+    rdata = desec.tlsa.tlsa_record(file, usage, selector, match_type, check, subname, cert_domain)
 
     assert (
         rdata
@@ -168,12 +169,12 @@ def test_tlsa_record_expired_check():
     subname = ""
     cert_domain = "test-suite.test"
 
-    usage = desec.TLSAUsage(3)
-    selector = desec.TLSASelector(0)
-    match_type = desec.TLSAMatchType(1)
+    usage = desec.tlsa.TLSAUsage(3)
+    selector = desec.tlsa.TLSASelector(0)
+    match_type = desec.tlsa.TLSAMatchType(1)
 
-    with pytest.raises(desec.TLSACheckError):
-        desec.tlsa_record(
+    with pytest.raises(desec.exceptions.TLSACheckError):
+        desec.tlsa.tlsa_record(
             file,
             usage,
             selector,
@@ -194,11 +195,11 @@ def test_tlsa_record_expired_nocheck():
     subname = ""
     cert_domain = "test-suite.test"
 
-    usage = desec.TLSAUsage(3)
-    selector = desec.TLSASelector(0)
-    match_type = desec.TLSAMatchType(1)
+    usage = desec.tlsa.TLSAUsage(3)
+    selector = desec.tlsa.TLSASelector(0)
+    match_type = desec.tlsa.TLSAMatchType(1)
 
-    rdata = desec.tlsa_record(
+    rdata = desec.tlsa.tlsa_record(
         file,
         usage,
         selector,
@@ -222,12 +223,12 @@ def test_tlsa_record_wrong_name_check(subname, cert_domain):
     # Test certificate file.
     file = "tests/files/test_tlsa_record.pem"
 
-    usage = desec.TLSAUsage(3)
-    selector = desec.TLSASelector(0)
-    match_type = desec.TLSAMatchType(1)
+    usage = desec.tlsa.TLSAUsage(3)
+    selector = desec.tlsa.TLSASelector(0)
+    match_type = desec.tlsa.TLSAMatchType(1)
 
-    with pytest.raises(desec.TLSACheckError):
-        desec.tlsa_record(
+    with pytest.raises(desec.exceptions.TLSACheckError):
+        desec.tlsa.tlsa_record(
             file,
             usage,
             selector,
@@ -249,11 +250,11 @@ def test_tlsa_record_wrong_name_nocheck(subname, cert_domain):
     # Test certificate file.
     file = "tests/files/test_tlsa_record.pem"
 
-    usage = desec.TLSAUsage(3)
-    selector = desec.TLSASelector(0)
-    match_type = desec.TLSAMatchType(1)
+    usage = desec.tlsa.TLSAUsage(3)
+    selector = desec.tlsa.TLSASelector(0)
+    match_type = desec.tlsa.TLSAMatchType(1)
 
-    rdata = desec.tlsa_record(
+    rdata = desec.tlsa.tlsa_record(
         file,
         usage,
         selector,
@@ -277,12 +278,12 @@ def test_tlsa_record_wrong_usage_check(usage):
     subname = ""
     cert_domain = "test-suite.test"
 
-    usage = desec.TLSAUsage(usage)
-    selector = desec.TLSASelector(0)
-    match_type = desec.TLSAMatchType(1)
+    usage = desec.tlsa.TLSAUsage(usage)
+    selector = desec.tlsa.TLSASelector(0)
+    match_type = desec.tlsa.TLSAMatchType(1)
 
-    with pytest.raises(desec.TLSACheckError):
-        desec.tlsa_record(
+    with pytest.raises(desec.exceptions.TLSACheckError):
+        desec.tlsa.tlsa_record(
             file,
             usage,
             selector,
@@ -304,11 +305,11 @@ def test_tlsa_record_wrong_usage_nocheck(usage):
     subname = ""
     cert_domain = "test-suite.test"
 
-    usage = desec.TLSAUsage(usage)
-    selector = desec.TLSASelector(0)
-    match_type = desec.TLSAMatchType(1)
+    usage = desec.tlsa.TLSAUsage(usage)
+    selector = desec.tlsa.TLSASelector(0)
+    match_type = desec.tlsa.TLSAMatchType(1)
 
-    rdata = desec.tlsa_record(
+    rdata = desec.tlsa.tlsa_record(
         file,
         usage,
         selector,

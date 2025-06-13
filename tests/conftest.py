@@ -3,7 +3,7 @@ import uuid
 
 import pytest
 
-import desec
+import desec.api
 
 
 def pytest_configure(config):
@@ -65,7 +65,7 @@ def api_client():
         token = os.environ["DESEC_TOKEN"]
     except KeyError:
         token = None
-    return desec.APIClient(token)
+    return desec.api.APIClient(token)
 
 
 @pytest.fixture(scope="function")

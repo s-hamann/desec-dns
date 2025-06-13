@@ -1,6 +1,6 @@
 import pytest
 
-import desec
+import desec.exceptions
 
 
 @pytest.mark.vcr
@@ -62,7 +62,7 @@ def test_add_token_policy_conflict(api_client, domain, new_token):
     # Add a default policy for the token.
     api_client.add_token_policy(token["id"])
 
-    with pytest.raises(desec.ConflictError):
+    with pytest.raises(desec.exceptions.ConflictError):
         # Try adding another default policy. There can be only one.
         api_client.add_token_policy(token["id"])
 

@@ -2,7 +2,8 @@ import time
 
 import pytest
 
-import desec
+import desec.api
+import desec.exceptions
 
 
 @pytest.mark.vcr
@@ -15,10 +16,10 @@ def test_invalid_authentication(request, api_client):
     # is reset.
     token_auth = api_client._token_auth
     request.addfinalizer(lambda: setattr(api_client, "_token_auth", token_auth))
-    api_client._token_auth = desec.TokenAuth("invalid-token")
+    api_client._token_auth = desec.api.TokenAuth("invalid-token")
 
-    with pytest.raises(desec.AuthenticationError):
-        api_client.query("GET", f"{desec.API_BASE_URL}/domains/")
+    with pytest.raises(desec.exceptions.AuthenticationError):
+        api_client.query("GET", f"{desec.api.API_BASE_URL}/domains/")
 
 
 @pytest.mark.vcr
@@ -32,10 +33,10 @@ def test_invalid_authorization(request, api_client, new_token):
     token = new_token(manage_tokens=False)
     token_auth = api_client._token_auth
     request.addfinalizer(lambda: setattr(api_client, "_token_auth", token_auth))
-    api_client._token_auth = desec.TokenAuth(token["token"])
+    api_client._token_auth = desec.api.TokenAuth(token["token"])
 
-    with pytest.raises(desec.TokenPermissionError):
-        api_client.query("GET", f"{desec.API_BASE_URL}/auth/tokens/")
+    with pytest.raises(desec.exceptions.TokenPermissionError):
+        api_client.query("GET", f"{desec.api.API_BASE_URL}/auth/tokens/")
 
 
 @pytest.mark.vcr
@@ -55,7 +56,7 @@ def test_pagination(request, api_client, domain):
     # Add more than 500 RRsets to the domain.
     records = api_client.update_bulk_record(domain, rrsets, exclusive=True)
 
-    response = api_client.query("GET", f"{desec.API_BASE_URL}/domains/{domain}/rrsets/")
+    response = api_client.query("GET", f"{desec.api.API_BASE_URL}/domains/{domain}/rrsets/")
 
     assert len(response) > 500
     for r in records:
@@ -81,7 +82,7 @@ def test_rate_limit_blocking(api_client, domain, new_record):
     tic = time.perf_counter()
     record = api_client.query(
         "PATCH",
-        f"{desec.API_BASE_URL}/domains/{domain}/rrsets/test.../TXT/",
+        f"{desec.api.API_BASE_URL}/domains/{domain}/rrsets/test.../TXT/",
         data={"records": ['"test3"']},
     )
     toc = time.perf_counter()
@@ -111,9 +112,9 @@ def test_rate_limit_non_blocking(request, api_client, domain, new_record):
 
     # Set APIClient to non-blocking mode.
     api_client._retry_limit = 0
-    with pytest.raises(desec.RateLimitError):
+    with pytest.raises(desec.exceptions.RateLimitError):
         api_client.query(
             "PATCH",
-            f"{desec.API_BASE_URL}/domains/{domain}/rrsets/test.../TXT/",
+            f"{desec.api.API_BASE_URL}/domains/{domain}/rrsets/test.../TXT/",
             data={"records": ['"test3"']},
         )
