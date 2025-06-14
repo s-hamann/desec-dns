@@ -747,7 +747,9 @@ def main() -> None:
             records: list[desec.types.JsonRRsetWritableType]
             records = []
             for port in arguments.ports:
-                subname = f"_{port}._{arguments.protocol}.{arguments.subname}"
+                subname = f"_{port}._{arguments.protocol}"
+                if arguments.subname:
+                    subname += f".{arguments.subname}"
                 if arguments.action == "add-tlsa":
                     try:
                         existing_rrset = api_client.get_records(arguments.domain, "TLSA", subname)[
