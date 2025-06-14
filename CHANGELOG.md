@@ -25,7 +25,7 @@ this file.
 
 ### Breaking Changes
 * Fix domain positional argument being eaten by previous arguments.
-  This changes they way multiple values are passed, e.g. multiple records for a
+  This changes the way multiple values are passed, e.g. multiple records for a
   new record set. The respective option needs to be repeated now, e.g.
   ```sh
   desec add-record -t A -s www -r 192.0.2.1 -r 192.0.2.2 example.com
