@@ -13,6 +13,27 @@ Similarly, the project's dependencies are not part of the public API and may
 change on minor version bumps. This, too, will be noted as a breaking change in
 this file.
 
+## [1.3.0] - 2025-06-14
+
+### Breaking Changes
+* The code was restructured from a single-file module into a multi-file
+  package. This breaks installation by downloading the python file directly
+  from the repository. Installation as a python package is required now.
+
+### New Features
+* Add py.types to indicate typing support (PEP 561)
+* Enhance documentation of custom types with links to deSEC docs
+
+### Fixes
+* Fix management of TLSA records at the zone apex
+
+### Deprecations
+* This release introduces several submodules. Users of the python
+  module/library should prefer importing from the submodules rather than the
+  top-level module (e.g. `desec.api.APIClient`, not `desec.APIClient`).
+  Old names will continue to work but are deprecated and scheduled to be
+  removed in version 2.0.
+
 ## [1.2.0] - 2024-12-31
 
 ### New Features
@@ -41,6 +62,7 @@ this file.
 
 * First versioned release
 
+[1.3.0]: https://github.com/s-hamann/desec-dns/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/s-hamann/desec-dns/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/s-hamann/desec-dns/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/s-hamann/desec-dns/releases/tag/v1.0.0
