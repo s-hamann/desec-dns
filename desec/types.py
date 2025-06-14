@@ -44,6 +44,10 @@ DnsRecordTypeType = t.Literal[
     "TXT",
     "URI",
 ]
+"""DNS record types supported by the deSEC API.
+
+See https://desec.readthedocs.io/en/latest/dns/rrsets.html#supported-types
+"""
 
 JsonGenericType = t.Union[
     None,
@@ -57,7 +61,10 @@ JsonGenericType = t.Union[
 
 
 class JsonTokenType(t.TypedDict):
-    """API token information."""
+    """API token information.
+
+    See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-field-reference
+    """
 
     allowed_subnets: list[str]
     auto_policy: bool
@@ -74,13 +81,19 @@ class JsonTokenType(t.TypedDict):
 
 
 class JsonTokenSecretType(JsonTokenType):
-    """API token information including the secret token value."""
+    """API token information including the secret token value.
+
+    See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-field-reference
+    """
 
     token: str
 
 
 class JsonTokenPolicyType(t.TypedDict):
-    """API token policy information."""
+    """API token policy information.
+
+    See https://desec.readthedocs.io/en/latest/auth/tokens.html#token-policy-field-reference
+    """
 
     id: str
     domain: str | None
@@ -90,7 +103,10 @@ class JsonTokenPolicyType(t.TypedDict):
 
 
 class JsonDNSSECKeyInfoType(t.TypedDict):
-    """DNSSEC public key information."""
+    """DNSSEC public key information.
+
+    See https://desec.readthedocs.io/en/latest/dns/domains.html#domain-field-reference
+    """
 
     dnskey: str
     ds: list[str]
@@ -100,7 +116,10 @@ class JsonDNSSECKeyInfoType(t.TypedDict):
 
 
 class JsonDomainType(t.TypedDict):
-    """Domain information."""
+    """Domain information.
+
+    See https://desec.readthedocs.io/en/latest/dns/domains.html#domain-field-reference
+    """
 
     created: str
     minimum_ttl: int
@@ -110,13 +129,19 @@ class JsonDomainType(t.TypedDict):
 
 
 class JsonDomainWithKeysType(JsonDomainType):
-    """Domain information including DNSSEC public key information."""
+    """Domain information including DNSSEC public key information.
+
+    See https://desec.readthedocs.io/en/latest/dns/domains.html#domain-field-reference
+    """
 
     keys: list[JsonDNSSECKeyInfoType]
 
 
 class JsonRRsetWritableType(t.TypedDict):
-    """Writable fields of RRset information."""
+    """Writable fields of RRset information.
+
+    See https://desec.readthedocs.io/en/latest/dns/rrsets.html#rrset-field-reference
+    """
 
     records: list[str]
     subname: str
@@ -125,7 +150,10 @@ class JsonRRsetWritableType(t.TypedDict):
 
 
 class JsonRRsetType(JsonRRsetWritableType):
-    """RRset information."""
+    """RRset information.
+
+    See https://desec.readthedocs.io/en/latest/dns/rrsets.html#rrset-field-reference
+    """
 
     created: str
     domain: str
