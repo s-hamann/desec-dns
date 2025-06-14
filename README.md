@@ -106,7 +106,7 @@ api_client = desec.api.APIClient("my-secret-token-value")
 
 Refer to the documentation for anything beyond that.
 The module's API is documented in standard Python docstrings and type
-annotation and can be viewed using any tool that can handle them.
+annotations and can be viewed using any tool that can handle them.
 For example, to browse the documentation using [pdoc](https://pdoc.dev/), run:
 
 ```sh
