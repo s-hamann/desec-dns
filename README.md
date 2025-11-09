@@ -27,7 +27,7 @@ The features include:
 Requirements
 ============
 
-* Python 3.9+
+* Python 3.10+
 * [requests](https://github.com/requests/requests)
 * [cryptography](https://github.com/pyca/cryptography/) (optional, for high-level
   management of TLSA records)

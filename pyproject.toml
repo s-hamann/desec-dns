@@ -22,7 +22,7 @@ include = [
 Changelog = "https://github.com/s-hamann/desec-dns/blob/main/CHANGELOG.md"
 
 [tool.poetry.dependencies]
-python = ">=3.9"
+python = ">=3.10"
 requests = ">=2.0.0"
 cryptography = { version = ">=42.0.0", optional = true }
 dnspython = { version = ">=2.0.0", optional = true }
@@ -51,7 +51,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 line-length = 99
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 extend-select = [
