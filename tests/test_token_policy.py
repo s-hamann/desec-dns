@@ -73,11 +73,9 @@ def test_add_token_policy_conflict(api_client, domain, new_token):
 @pytest.mark.parametrize("policy_rtype", [False, None, "AAAA"], ids=["keep", None, "AAAA"])
 @pytest.mark.parametrize("policy_perm_write", [None, True, False], ids=["keep", True, False])
 @pytest.mark.uncollect_if(
-    lambda policy_domain,
-    policy_subname,
-    policy_rtype,
-    policy_perm_write,
-    **kwargs: not policy_domain and policy_subname is None and policy_rtype is None
+    lambda policy_domain, policy_subname, policy_rtype, policy_perm_write, **kwargs: (
+        not policy_domain and policy_subname is None and policy_rtype is None
+    )
 )
 def test_modify_token_policy(
     api_client, domain, new_token, policy_domain, policy_subname, policy_rtype, policy_perm_write
