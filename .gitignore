@@ -6,3 +6,5 @@ coverage.lcov
 coverage.xml
 htmlcov/
 poetry.lock
+**/__pycache__/
+dist/
