@@ -49,15 +49,15 @@ DnsRecordTypeType = t.Literal[
 See https://desec.readthedocs.io/en/latest/dns/rrsets.html#supported-types
 """
 
-JsonGenericType = t.Union[
-    None,
-    int,
-    float,
-    str,
-    bool,
-    t.Sequence["JsonGenericType"],
-    t.Mapping[str, "JsonGenericType"],
-]
+JsonGenericType = (
+    None
+    | int
+    | float
+    | str
+    | bool
+    | t.Sequence["JsonGenericType"]
+    | t.Mapping[str, "JsonGenericType"]
+)
 
 
 class JsonTokenType(t.TypedDict):
