@@ -38,6 +38,18 @@ Usage
 
 ### CLI
 
+The deSEC API requires an token for authentication, which you can create on the
+[deSEC.io](https://desec.io/) website or through the API if you already have another token. You can
+provide this token to the CLI:
+
+1. Via the `--token` argument
+2. In the `DESEC_TOKEN` environment variable
+3. In a file by passing a path to the `--token-file` argument
+4. In a file at `$XDG_CONFIG_HOME/desec/token`
+
+In case multiple methods are used simultaneously, priority will be given according to the list
+above in order.
+
 The functionality is split into subcommands, as shown below.
 Most subcommand require further parameters to work.
 They are described by the usage information of each individual subcommand.
@@ -82,7 +94,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -V, --version         show program's version number and exit
-  --token TOKEN         API authentication token
+  --token TOKEN         API authentication token (default: $DESEC_TOKEN environment variable)
   --token-file TOKEN_FILE
                         file containing the API authentication token (default:
                         $XDG_CONFIG_HOME/desec/token)
