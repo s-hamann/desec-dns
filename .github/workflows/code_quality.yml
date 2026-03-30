@@ -22,12 +22,12 @@ jobs:
       RUFF_OUTPUT_FORMAT: github
     steps:
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.14'
           check-latest: true
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install package and dependencies
         run: pip install -e .'[all]'
       - name: Install tox
@@ -54,9 +54,9 @@ jobs:
           - 'pypy3.10'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install tox
@@ -64,7 +64,7 @@ jobs:
       - name: Run tests
         run: tox -q run
       - name: Store code coverage data
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-${{ matrix.python-version }}
           path: .coverage.*
@@ -76,16 +76,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.14'
           check-latest: true
       - name: Install tox
         run: pip install tox
       - name: Get code coverage data
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: coverage-*
           merge-multiple: true
@@ -94,7 +94,7 @@ jobs:
           tox -q run -e coverage -- json
           tox -q run -e coverage -- html
       - name: Store code coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-report
           path: htmlcov/
