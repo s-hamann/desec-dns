@@ -110,7 +110,11 @@ def main() -> None:
     p_action.required = True
 
     g = parser.add_mutually_exclusive_group()
-    g.add_argument("--token", help="API authentication token")
+    g.add_argument(
+        "--token",
+        default=os.environ.get("DESEC_TOKEN"),
+        help="API authentication token (default: $DESEC_TOKEN environment variable)",
+    )
     g.add_argument(
         "--token-file",
         default=os.path.join(os.environ.get("XDG_CONFIG_HOME", "~/.config"), "desec", "token"),
