@@ -13,6 +13,17 @@ Similarly, the project's dependencies are not part of the public API and may
 change on minor version bumps. This, too, will be noted as a breaking change in
 this file.
 
+## [1.4.0] - 2026-04-01
+
+### Breaking Changes
+* Python 3.9 is no longer officially supported. The code may continue to work
+  with Python 3.9, but is no longer tested with this version.
+
+### New Features
+* The deSEC authentication token can now be set in the environment variable
+  `$DESEC_TOKEN`. This is an alternative to the existing command line
+  parameters `--token` and `--token-file`.
+
 ## [1.3.0] - 2025-06-14
 
 ### Breaking Changes
@@ -62,6 +73,7 @@ this file.
 
 * First versioned release
 
+[1.4.0]: https://github.com/s-hamann/desec-dns/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/s-hamann/desec-dns/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/s-hamann/desec-dns/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/s-hamann/desec-dns/compare/v1.0.0...v1.1.0
