@@ -160,6 +160,15 @@ and necessary tools for formatting, linting, and type-checking. If you want to w
 features that require optional dependencies, `install` the corresponding extras, e.g.:
 `poetry install --extras=tlsa` or just go for `poetry install --all-extras`.
 
+Gentoo Linux
+------------
+
+Gentoo users can enable the [GURU](https://wiki.gentoo.org/wiki/Project:GURU) overlay and install it using portage:
+
+```sh
+emerge app-misc/desec-dns
+```
+
 Related Work
 ============
 
