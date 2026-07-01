@@ -1,0 +1,425 @@
+.TH DESEC 1 "2026-07-01" "desec-dns 1.4.0" "User Commands"
+.SH NAME
+desec \- a simple deSEC.io API client
+.SH SYNOPSIS
+.B desec
+.RI [ global-options ]
+.I action
+.RI [ action-options ]
+.SH DESCRIPTION
+.B desec
+is a command-line client to manage domains hosted by deSEC.io using the
+deSEC.io API.
+It supports domain management, DNS record management, authentication token and
+token policy management, import and export of records in zone file and JSON
+format, and generation of TLSA records from certificate files.
+It also handles the API's rate limits and pagination transparently.
+.PP
+The functionality is split into subcommands (referred to as
+.IR action s).
+Each action takes its own set of options; run
+.B desec
+.I action
+.B \-\-help
+for details on a specific action.
+.SH GLOBAL OPTIONS
+These options apply to
+.B desec
+itself and must be given before the
+.IR action .
+.TP
+.BR \-h ", " \-\-help
+Show a help message and exit.
+.TP
+.BR \-V ", " \-\-version
+Show the program's version number and exit.
+.TP
+.BI \-\-token " TOKEN"
+API authentication token.
+Defaults to the value of the
+.B DESEC_TOKEN
+environment variable.
+Mutually exclusive with
+.BR \-\-token\-file .
+.TP
+.BI \-\-token\-file " TOKEN_FILE"
+File containing the API authentication token.
+Defaults to
+.IR $XDG_CONFIG_HOME/desec/token .
+Mutually exclusive with
+.BR \-\-token .
+.TP
+.B \-\-non\-blocking
+When the API's rate limit is reached, return an appropriate error instead of
+waiting.
+.TP
+.B \-\-blocking
+When the API's rate limit is reached, wait and retry the request.
+This is the default behaviour.
+.TP
+.B \-\-debug\-http
+Print details about HTTP requests and responses.
+.SH AUTHENTICATION
+The deSEC API requires a token for authentication, which can be created on the
+deSEC.io website or through the API using an existing token.
+The token is looked up from the following sources, in order of decreasing
+precedence:
+.IP 1. 4
+The
+.B \-\-token
+argument.
+.IP 2. 4
+The
+.B DESEC_TOKEN
+environment variable.
+.IP 3. 4
+The file given by the
+.B \-\-token\-file
+argument.
+.IP 4. 4
+The file
+.IR $XDG_CONFIG_HOME/desec/token .
+.SH TOKEN MANAGEMENT ACTIONS
+.TP
+.B list\-tokens
+List all authentication tokens.
+.TP
+.BI "create\-token " "[options]"
+Create and return a new authentication token.
+Options:
+.RS
+.TP
+.BI \-\-name " NAME"
+Token name.
+.TP
+.B \-\-manage\-tokens
+Create a token that can manage tokens.
+.TP
+.B \-\-create\-domain
+Create a token that can create new domains.
+.TP
+.B \-\-delete\-domain
+Create a token that can delete domains.
+.TP
+.BI \-\-allowed\-subnets " SUBNET"
+IPv4/IPv6 addresses or subnets from which clients may authenticate with this
+token.
+May be given multiple times.
+.TP
+.B \-\-auto\-policy
+Automatically set up a permissive policy for any domains created with this
+token.
+.RE
+.TP
+.BI "modify\-token " "id [options]"
+Modify the existing authentication token
+.IR id .
+Options:
+.RS
+.TP
+.BI \-\-name " NAME"
+Token name.
+.TP
+.BR \-\-manage\-tokens ", " \-\-no\-manage\-tokens
+Allow or disallow this token to manage tokens.
+.TP
+.BR \-\-create\-domain ", " \-\-no\-create\-domain
+Allow or disallow this token to create new domains.
+.TP
+.BR \-\-delete\-domain ", " \-\-no\-delete\-domain
+Allow or disallow this token to delete domains.
+.TP
+.BI \-\-allowed\-subnets " SUBNET"
+IPv4/IPv6 addresses or subnets from which clients may authenticate with this
+token.
+May be given multiple times.
+.TP
+.BR \-\-auto\-policy ", " \-\-no\-auto\-policy
+Enable or disable automatically setting up a permissive policy for any domains
+created with this token.
+.RE
+.TP
+.BI "delete\-token " id
+Delete the authentication token
+.IR id .
+.SH TOKEN POLICY ACTIONS
+.TP
+.BI "list\-token\-policies " id
+List all policies of the authentication token
+.IR id .
+.TP
+.BI "add\-token\-policy " "id [options]"
+Add a policy for the authentication token
+.IR id .
+Options:
+.RS
+.TP
+.BI \-\-domain " DOMAIN"
+Domain to which the policy applies.
+.TP
+.BI \-t ", " \-\-type " TYPE"
+Record type to which the policy applies.
+See
+.B RECORD TYPES
+below.
+.TP
+.BI \-s ", " \-\-subname " SUBNAME"
+Subname to which the policy applies.
+.TP
+.B \-\-write
+Allow write access.
+.RE
+.TP
+.BI "modify\-token\-policy " "token_id policy_id [options]"
+Modify the existing policy
+.I policy_id
+of the authentication token
+.IR token_id .
+Options:
+.RS
+.TP
+.BI \-\-domain " DOMAIN"
+Domain to which the policy applies.
+.TP
+.BI \-t ", " \-\-type " TYPE"
+Record type to which the policy applies.
+See
+.B RECORD TYPES
+below.
+.TP
+.BI \-s ", " \-\-subname " SUBNAME"
+Subname to which the policy applies.
+.TP
+.BR \-\-write ", " \-\-no\-write
+Allow or disallow write access.
+.RE
+.TP
+.BI "delete\-token\-policy " "token_id policy_id"
+Delete the policy
+.I policy_id
+of the authentication token
+.IR token_id .
+.SH DOMAIN ACTIONS
+.TP
+.B list\-domains
+List all registered domains.
+.TP
+.BI "domain\-info " domain
+Get information about
+.IR domain .
+.TP
+.BI "new\-domain " domain
+Create the new domain
+.IR domain .
+.TP
+.BI "delete\-domain " domain
+Delete
+.IR domain .
+.SH RECORD ACTIONS
+The following options are common to several record actions:
+.RS
+.TP
+.BI \-t ", " \-\-type " TYPE"
+Record type. See
+.B RECORD TYPES
+below.
+.TP
+.BI \-s ", " \-\-subname " SUBNAME"
+Subname; omit to operate on the zone apex.
+.TP
+.BI \-r ", " \-\-records " RECORD"
+A DNS record. May be given multiple times.
+.TP
+.BI \-\-ttl " TTL"
+The record's TTL in seconds (default: 3600).
+.RE
+.TP
+.BI "get\-records " "domain [\-t TYPE] [\-s SUBNAME]"
+List all records of
+.IR domain ,
+optionally restricted to a record type and/or subname.
+.TP
+.BI "add\-record " "domain \-t TYPE \-r RECORD... [\-s SUBNAME] [\-\-ttl TTL]"
+Add a record set to
+.IR domain .
+.B \-t
+and
+.B \-r
+are required.
+.TP
+.BI "change\-record " "domain \-t TYPE [\-r RECORD...] [\-s SUBNAME] [\-\-ttl TTL]"
+Change an existing record set of
+.IR domain .
+.B \-t
+is required.
+.TP
+.BI "update\-record " "domain \-t TYPE \-r RECORD... [\-s SUBNAME] [\-\-ttl TTL]"
+Add entries, possibly to an existing record set of
+.IR domain .
+.B \-t
+and
+.B \-r
+are required.
+.TP
+.BI "delete\-record " "domain \-t TYPE [\-r RECORD...] [\-s SUBNAME]"
+Delete a record set of
+.IR domain .
+.B \-t
+is required.
+If no records are given with
+.BR \-r ,
+all records of the given type and subname are deleted.
+.SH TLSA ACTIONS
+These actions require the optional
+.B cryptography
+dependency.
+.TP
+.BI "add\-tlsa " "domain \-p PORT... \-c CERT [options]"
+Add a TLSA record for an X.509 certificate (DANE), keeping any existing records.
+.TP
+.BI "set\-tlsa " "domain \-p PORT... \-c CERT [options]"
+Set the TLSA record for an X.509 certificate (DANE), removing any existing
+records for the same port, protocol and subname.
+.PP
+Options for
+.B add\-tlsa
+and
+.BR set\-tlsa :
+.RS
+.TP
+.BI \-s ", " \-\-subname " SUBNAME"
+Subname that the record is valid for; omit for the zone apex.
+.TP
+.BI \-p ", " \-\-ports " PORT"
+Port that uses the certificate. Required. May be given multiple times.
+.TP
+.BI \-\-protocol " { tcp | udp | sctp }"
+Protocol that the given ports use (default: tcp).
+.TP
+.BI \-c ", " \-\-certificate " CERT"
+File name of the X.509 certificate for which to set TLSA records (DER or PEM
+format). Required.
+.TP
+.BI \-\-usage " USAGE"
+TLSA certificate usage. Accepts numeric values or RFC 7218 symbolic names
+.RB ( PKIX\-TA ", " PKIX\-EE ", " DANE\-TA ", " DANE\-EE ;
+default:
+.BR DANE\-EE ).
+.TP
+.BI \-\-selector " SELECTOR"
+TLSA selector. Accepts numeric values or RFC 7218 symbolic names
+.RB ( Cert ", " SPKI ;
+default:
+.BR Cert ).
+.TP
+.BI \-\-match\-type " MATCH_TYPE"
+TLSA matching type. Accepts numeric values or RFC 7218 symbolic names
+.RB ( Full ", " SHA2\-256 ", " SHA2\-512 ;
+default:
+.BR SHA2\-256 ).
+.TP
+.BI \-\-ttl " TTL"
+The record's TTL in seconds, if creating a new record set (default: 3600).
+.TP
+.B \-\-no\-check
+Skip any sanity checks and set the TLSA record as specified.
+.RE
+.SH IMPORT AND EXPORT ACTIONS
+.TP
+.BI "export " "domain \-f FILE"
+Export all records of
+.I domain
+into
+.I FILE
+in JSON format.
+.TP
+.BI "export\-zone " "domain \-f FILE"
+Export all records of
+.I domain
+into
+.I FILE
+in zone file format.
+.TP
+.BI "import " "domain \-f FILE [\-\-clear]"
+Import records for
+.I domain
+from the JSON file
+.IR FILE .
+With
+.BR \-\-clear ,
+remove all existing records before import.
+.TP
+.BI "import\-zone " "domain \-f FILE [\-\-clear] [\-d]"
+Import records for
+.I domain
+from the zone file
+.IR FILE .
+Requires the optional
+.B dnspython
+dependency.
+With
+.BR \-\-clear ,
+remove all existing records before import.
+With
+.BR \-d ", " \-\-dry\-run ,
+just parse the zone data without writing it to the API.
+.SH RECORD TYPES
+The
+.B \-t
+/
+.B \-\-type
+option accepts the following DNS record types:
+.PP
+.nf
+A, AAAA, AFSDB, APL, CAA, CDNSKEY, CDS, CERT, CNAME, DHCID, DNAME, DNSKEY,
+DLV, DS, EUI48, EUI64, HINFO, HTTPS, KX, L32, L64, LOC, LP, MX, NAPTR, NID,
+NS, OPENPGPKEY, PTR, RP, SMIMEA, SPF, SRV, SSHFP, SVCB, TLSA, TXT, URI
+.fi
+.SH ENVIRONMENT
+.TP
+.B DESEC_TOKEN
+API authentication token, used when
+.B \-\-token
+is not given.
+.TP
+.B XDG_CONFIG_HOME
+Base directory for the default token file location. Defaults to
+.I ~/.config
+if unset.
+.SH FILES
+.TP
+.I $XDG_CONFIG_HOME/desec/token
+Default file from which the API token is read when neither
+.B \-\-token
+nor
+.B DESEC_TOKEN
+is set.
+.SH EXIT STATUS
+Returns 0 on success. On error, a message is printed and a non-zero,
+error-specific exit code is returned.
+.SH EXAMPLES
+List all registered domains:
+.PP
+.RS
+.B desec list\-domains
+.RE
+.PP
+Add an A record:
+.PP
+.RS
+.B desec add\-record example.com \-t A \-s www \-r 203.0.113.1 \-\-ttl 3600
+.RE
+.PP
+Export a domain to a zone file:
+.PP
+.RS
+.B desec export\-zone example.com \-f example.com.zone
+.RE
+.SH SEE ALSO
+Project home page:
+.I https://github.com/s-hamann/desec-dns
+.PP
+deSEC.io API documentation:
+.I https://desec.readthedocs.io/
+.SH AUTHOR
+Written by desec-dns contributors.
