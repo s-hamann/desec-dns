@@ -178,6 +178,20 @@ Alternatively, source it from your `~/.bashrc`:
 source /path/to/completions/desec.bash
 ```
 
+Manual page
+-----------
+
+A manual page for the `desec` command is available at
+[`man/desec.1`](man/desec.1). Distribution packages typically install it
+automatically. When installing manually, copy it to a directory in your
+`MANPATH`, for example:
+
+```sh
+install -Dm644 man/desec.1 /usr/share/man/man1/desec.1
+```
+
+It can then be viewed with `man desec`.
+
 Gentoo Linux
 ------------
 
