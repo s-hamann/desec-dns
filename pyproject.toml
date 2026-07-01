@@ -15,6 +15,7 @@ classifiers = [
 packages = [{ include = "desec/" }]
 include = [
     { path = "CHANGELOG.md", format = "sdist" },
+    { path = "completions/desec.bash", format = "sdist" },
 ]
 
 [tool.poetry.urls]

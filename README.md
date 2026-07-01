@@ -160,6 +160,24 @@ and necessary tools for formatting, linting, and type-checking. If you want to w
 features that require optional dependencies, `install` the corresponding extras, e.g.:
 `poetry install --extras=tlsa` or just go for `poetry install --all-extras`.
 
+Shell completion
+----------------
+
+A bash completion script is available at
+[`completions/desec.bash`](completions/desec.bash). Distribution packages
+typically install it automatically. When installing manually, copy it to your
+bash-completion completions directory, for example:
+
+```sh
+install -Dm644 completions/desec.bash /usr/share/bash-completion/completions/desec
+```
+
+Alternatively, source it from your `~/.bashrc`:
+
+```sh
+source /path/to/completions/desec.bash
+```
+
 Gentoo Linux
 ------------
 
