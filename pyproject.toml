@@ -39,7 +39,7 @@ all = ["cryptography", "dnspython"]
 desec = "desec.cli:main"
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.4.5"
+ruff = ">=0.16.0"
 mypy = ">=1.10.0"
 types-requests = ">=2.32.0.20240602"
 tox = ">=4.0.0"
@@ -59,17 +59,10 @@ target-version = "py310"
 [tool.ruff.lint]
 extend-select = [
     "W", # pycodestyle warnings
-    "I", # isort
     "N", # pep8-naming
     "D", # pydocstyle
-    "UP", # pyupgrade
     "S", # flake8-bandit
-    "B", # flake8-bugbear
-    "FA", # flake8-future-annotations
     "PT", # flake8-pytest-style
-    "SIM", # flake8-simplify
-    "TCH", # flake8-type-checking
-    "RUF", # Ruff-specific rules
 ]
 ignore = [
     "D105", # undocumented-magic-method
@@ -78,9 +71,6 @@ ignore = [
     "D213", # multi-line-summary-second-line
     "PT003", # pytest-extraneous-scope-function
     "PT006", # pytest-parametrize-names-wrong-type
-    "SIM105", # suppressible-exception
-    "SIM108", # if-else-block-instead-of-if-exp
-    "SIM212", # if-expr-with-twisted-arms
 ]
 
 [tool.ruff.lint.per-file-ignores]

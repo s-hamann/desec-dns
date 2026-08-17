@@ -14,11 +14,11 @@ import desec.types
 
 # For backwards compatibility, we import submodule content into the top-level scope.
 # To be removed in version 2.0.
-from desec.api import *  # noqa: F403
-from desec.exceptions import *  # noqa: F403
-from desec.tlsa import *  # noqa: F403
-from desec.types import *  # noqa: F403
-from desec.utils import *  # noqa: F403
+from desec.api import *
+from desec.exceptions import *
+from desec.tlsa import *
+from desec.types import *
+from desec.utils import *
 
 __version__ = "0.0.0"
 
