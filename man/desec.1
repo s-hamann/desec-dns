@@ -44,6 +44,9 @@ Mutually exclusive with
 .TP
 .BI \-\-token\-file " TOKEN_FILE"
 File containing the API authentication token.
+The file may also be a script that prints the API authentication token to
+stdout. Scripts are distinguished from plain files by the executable
+permission bit on the file system.
 Defaults to
 .IR $XDG_CONFIG_HOME/desec/token .
 Mutually exclusive with

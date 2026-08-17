@@ -13,6 +13,7 @@ import argparse
 import json
 import logging
 import os
+import subprocess
 import sys
 import typing as t
 from pprint import pprint
@@ -603,8 +604,15 @@ def main() -> None:
     if arguments.token:
         token = arguments.token
     else:
-        with open(os.path.expanduser(arguments.token_file)) as f:
-            token = f.readline().strip()
+        token_file = os.path.expanduser(arguments.token_file)
+        if os.access(token_file, os.X_OK):
+            proc = subprocess.run(  # noqa: S603
+                token_file, stdout=subprocess.PIPE, text=True, check=True
+            )
+            token = proc.stdout.strip()
+        else:
+            with open(token_file) as f:
+                token = f.readline().strip()
     if arguments.block:
         api_client = desec.api.APIClient(token)
     else:

@@ -50,6 +50,10 @@ provide this token to the CLI:
 In case multiple methods are used simultaneously, priority will be given according to the list
 above in order.
 
+Note: If the token is obtained from a file, the file may be a scripts that
+prints to token to stdout. Scripts are distinguished from plain files by the
+executable permission bit on the file system.
+
 The functionality is split into subcommands, as shown below.
 Most subcommand require further parameters to work.
 They are described by the usage information of each individual subcommand.
