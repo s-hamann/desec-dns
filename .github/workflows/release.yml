@@ -15,9 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install poetry
@@ -29,7 +29,7 @@ jobs:
           poetry version '${{ github.event.release.tag_name }}'
           poetry build
       - name: Store built package
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: distfiles
           path: dist/
@@ -44,7 +44,7 @@ jobs:
     needs: build
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Get built package
         uses: actions/download-artifact@v8
         with:
@@ -67,7 +67,7 @@ jobs:
     needs: build
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Get built package
         uses: actions/download-artifact@v8
         with:
