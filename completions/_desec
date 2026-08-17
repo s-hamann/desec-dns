@@ -1,0 +1,230 @@
+#compdef _desec desec
+
+_desec_cache_policy() {
+    local -a oldp
+    oldp=( "$1"(Nmd+1) )
+    (( $#oldp ))
+}
+
+_desec_list_token_ids() {
+    if ! _retrieve_cache desec_token_ids; then
+        local tokens=(${(f)${${${"$(_call_program token_ids "${_comp_command1}" "${desec_args}" list-tokens)"%\]}#\[}//$'\n'/}//\},/\}$'\n'})
+        if [[ "${tokens[*]}" == *"Invalid token"* ]]; then
+            tokens=()
+        fi
+        local -a ids names
+        for token in "${tokens[@]}"; do
+            local id="$(echo "${${token%\}}#*\{}" | sed -Ene 's/.*id.:\s*.([0-9a-f-]{36}).*/\1/p')"
+            local name="$(echo "${${token%\}}#*\{}" | sed -Ene 's/.*name.:\s*.([^"'\'']*).*/\1/p')"
+            if [[ -z "${name}" ]]; then
+                name="${id}"
+            fi
+            ids+=("${id}")
+            names+=("${name}")
+        done
+        if (( ${#ids} )); then
+            _store_cache desec_token_ids ids names
+        fi
+    fi
+    if (( ${#ids} )); then
+        _describe -t token_ids 'token ID' names ids
+    fi
+}
+
+_desec_list_types() {
+    _values 'record type' A AAAA AFSDB APL CAA CDNSKEY CDS CERT CNAME DHCID DNAME DNSKEY DLV DS EUI48 EUI64 HINFO HTTPS KX LOC MX NAPTR NS OPENPGPKEY PTR RP SMIMEA SPF SRV SSHFP SVCB TLSA TXT URI
+}
+
+_desec_list_domains() {
+    if ! _retrieve_cache desec_domains; then
+        set -A _desec_domains ${(f)"$(_call_program domains "${_comp_command1}" "${desec_args}" list-domains)"}
+        if [[ "${_desec_domains[*]}" == *"Invalid token"* ]]; then
+            _desec_domains=()
+        fi
+        if (( ${#_desec_domains} )); then
+            _store_cache desec_domains _desec_domains
+        fi
+    fi
+    if (( ${#_desec_domains} )); then
+        _values 'domains' ${_desec_domains[@]}
+    fi
+}
+
+_desec() {
+    local curcontext="${curcontext}"
+    local state
+    local -A opt_args
+    local -a args
+
+    args=( '(- :)'{-h,--help}'[show the help message and exit]' )
+
+    # This part completes the arguments to desec itself, arguments to the
+    # separate actions are handled below.
+    _arguments -s -C -A '-*' \
+        ${args} \
+        '(--token-file)--token=[API authentication token]:token: ' \
+        '(--token)--token-file=[file containing the API authentication token]:file:_files' \
+        {-V,--version}"[show program's version number and exit]" \
+        "(--blocking)--non-blocking[when the API's rate limit is reached, return an appropriate error]" \
+        "(--non-blocking)--blocking[when the API's rate limit is reached, wait and retry the request]" \
+        '--debug-http[print details about http requests / responses]' \
+        ':subcommand:->subcommand' \
+        '*::options:->options' && ret=0
+
+    # Get the optional arguments and their values from the command line.
+    # This may contain the token, which may be needed when generating completions.
+    desec_args="${(@kv)opt_args}"
+
+    case $state in
+
+        subcommand)
+            # Completing an action.
+            local -a actions
+            actions=(
+                'list-tokens:list all authentication tokens'
+                'create-token:create and return a new authentication token'
+                'modify-token:modify an existing authentication token'
+                'delete-token:delete an authentication token'
+                'list-token-policies:list all policies of an authentication token'
+                'add-token-policy:add a policy for an authentication token'
+                'modify-token-policy:modify an existing policy for an authentication token'
+                'delete-token-policy:delete an existing policy for an authentication token'
+                'list-domains:list all registered domains'
+                'domain-info:get information about a domain'
+                'new-domain:create a new domain'
+                'delete-domain:delete a domain'
+                'get-records:list all records of a domain'
+                'add-record:add a record set to the domain'
+                'change-record:change an existing record set'
+                'delete-record:delete a record set'
+                'update-record:add entries, possibly to an existing record set'
+                'add-tlsa:add a TLSA record for a X.509 certificate (aka DANE), keeping any existing records'
+                'set-tlsa:set the TLSA record for a X.509 certificate (aka DANE), removing any existing records for the same port, protocol and subname'
+                'export:export all records into a file'
+                'export-zone:export all records into a zone file'
+                'import:import records from a file'
+                'import-zone:import records from a zone file'
+            )
+            _describe -t action 'action' actions && ret=0
+            ;;
+
+        options)
+            # Completing arguments to an action.
+            curcontext="${curcontext%:*}-${words[1]}:"
+
+            case ${words[1]} in
+                create-token|modify-token)
+                    args+=(
+                        '--name=[token name]'
+                        '--allowed-subnets[IPv4/IPv6 addresses or subnets from which clients may authenticate with this token]'
+                    )
+                    ;|
+                create-token)
+                    args+=(
+                        '--manage-tokens[create a token that can manage tokens]'
+                        '--create-domain[create a token that can create new domains]'
+                        '--delete-domain[create a token that can delete domains]'
+                        '--auto-policy[automatically set up a permissive policy for any domains created with this token]'
+                    )
+                    ;|
+                modify-token)
+                    args+=(
+                        '(--no-manage-tokens)--manage-tokens[allow this token to manage tokens]'
+                        '(--manage-tokens)--no-manage-tokens[do not allow this token to manage tokens]'
+                        '(--no-create-domain)--create-domain[allow this token to create new domains]'
+                        '(--create-domain)--no-create-domain[do not allow this token to create new domains]'
+                        '(--no-delete-domain)--delete-domain[allow this token to delete domains]'
+                        '(--delete-domain)--no-delete-domain[do not allow this token to delete domains]'
+                        '()--auto-policy[automatically set up a permissive policy for any domains created with this token]'
+                        '()--no-auto-policy[do not automatically set up a policy for any domains created with this token]'
+                    )
+                    ;|
+                modify-token|delete-token|list-token-policies|*-token-policy)
+                    args+=(
+                        '1:token_id:_desec_list_token_ids'
+                    )
+                    ;|
+                modify-token-policy|delete-token-policy)
+                    args+=(
+                        '1:policy_id: '
+                    )
+                    ;|
+                add-token-policy|modify-token-policy)
+                    args+=(
+                        '--domain=[domain to which the policy applies]:domains:_desec_list_domains'
+                        '(-s --subname)'{-s+,--subname=}'[subname to which the policy applies]:subname: '
+                        '(-t --type)'{-t+,--type=}'[record type to which the policy applies]:record type:_desec_list_types'
+                        '(--no-write)--write=[allow write access]'
+                    )
+                    ;|
+                modify-token-policy)
+                    args+=(
+                        '(--write)--no-write=[do not allow write access]'
+                    )
+                    ;|
+                domain-info|*-domain|*-record|*-records|*-tlsa|export|export-zone|import|import-zone)
+                    args+=(
+                        '1:domains:_desec_list_domains'
+                    )
+                    ;|
+                *-record|*-records)
+                    args+=(
+                        '(-t --type)'{-t+,--type=}'[type of DNS record]:record type:_desec_list_types'
+                    )
+                    ;|
+                *-record|*-records|*-tlsa)
+                    args+=(
+                        '(-s --subname)'{-s+,--subname=}'[subname of the DNS record]:subname: '
+                    )
+                    ;|
+                delete-record)
+                    args+=(
+                        '(-r --records)'{-r+,--records=}'[the DNS records to delete]:record: '
+                    )
+                    ;|
+                add-record|change-record|update-record)
+                    args+=(
+                        '(-r --records)'{-r+,--records=}'[DNS record contents]:record: '
+                    )
+                    ;|
+                add-record|change-record|update-record|*-tlsa)
+                    args+=(
+                        "--ttl=[the record's TTL value]:TTL: "
+                    )
+                    ;|
+                *-tlsa)
+                    args+=(
+                        '(-p --ports)'{-p+,--ports=}'[ports that use the certificate]:ports: '
+                        '--protocol=[protocol that the given ports use]:protocol:(tcp udp sctp)'
+                        '(-c --certificate)'{-c+,--certificate=}'[file name of the X.509 certificate for which to set TLSA records]:file:_files -g "*.pem" -g "*.crt" -g "*.der" -g "*.cer"'
+                        '--usage=[TLSA certificate usage information]:usage:(PKIX-TA PKIX-EE DANE-TA DANE-EE)'
+                        '--selector=[TLSA selector]:selector:(Cert SPKI)'
+                        '--match-type=[TLSA matching type]:match type:(Full SHA2-256 SHA2-512)'
+                        '--no-check[skip any sanity checks and set the TLSA record as specified]'
+                    )
+                    ;|
+                export|export-zone|import|import-zone)
+                    args+=(
+                        '(-f --file)'{-f+,--file=}'[target file name]:file:_files'
+                    )
+                    ;|
+                import|import-zone)
+                    args+=(
+                        '--clear[remove all existing records before import]'
+                    )
+                    ;|
+                import-zone)
+                    args+=(
+                        '(-d --dry-run)'{-d,--dry-run}'[just parse zone data, but do not write it to the API]'
+                    )
+                    ;;
+            esac
+
+            _arguments -s -C ${args} && ret=0
+        ;;
+    esac
+
+    unset desec_args
+}
+
+_desec "$@"
