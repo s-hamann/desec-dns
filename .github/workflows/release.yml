@@ -25,6 +25,7 @@ jobs:
       - name: Build
         run: |
           sed -i -e "s/__version__ = .*/__version__ = \"$(echo '${{ github.event.release.tag_name }}' | sed 's/^v//')\"/" desec/__init__.py
+          sed -i -e "s/YYYY-MM-DD/$(date --iso-8601=date)/" -e "s/\"desec-dns 0\.0\.0\"/\"desec-dns $(echo '${{ github.event.release.tag_name }}' | sed 's/^v//')\"/" man/desec.1
           poetry version '${{ github.event.release.tag_name }}'
           poetry build
       - name: Store built package
