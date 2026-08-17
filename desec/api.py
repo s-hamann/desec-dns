@@ -185,7 +185,7 @@ class APIClient:
                 # Send the request.
                 self.logger.debug(
                     f"Request: {method} {url}",
-                    extra=dict(method=method, url=url, params=params, body=body),
+                    extra={"method": method, "url": url, "params": params, "body": body},
                 )
                 r = requests.request(
                     method,
@@ -197,10 +197,10 @@ class APIClient:
                 )
                 self.logger.debug(
                     f"Response: {r.status_code} for {method} {url}",
-                    extra=dict(
-                        response_code=r.status_code,
-                        response_body=self._get_response_content(r),
-                    ),
+                    extra={
+                        "response_code": r.status_code,
+                        "response_body": self._get_response_content(r),
+                    },
                 )
                 if r.status_code != 429:
                     # Not rate limited. Response is handled below.

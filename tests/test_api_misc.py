@@ -47,7 +47,7 @@ def test_pagination(request, api_client, domain):
     """
     rrsets = [
         {"type": "TXT", "subname": f"{i}.test", "records": [f'"pagination test {i}"'], "ttl": 3600}
-        for i in range(0, 501)
+        for i in range(501)
     ]
     # Define a cleanup function to ensure the rrsets get deleted even if the test fails.
     request.addfinalizer(
