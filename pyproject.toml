@@ -16,6 +16,7 @@ packages = [{ include = "desec/" }]
 include = [
     { path = "CHANGELOG.md", format = "sdist" },
     { path = "completions/desec.bash", format = "sdist" },
+    { path = "completions/_desec", format = "sdist" },
     { path = "man/desec.1", format = "sdist" },
 ]
 

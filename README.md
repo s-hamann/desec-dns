@@ -163,16 +163,18 @@ features that require optional dependencies, `install` the corresponding extras,
 Shell completion
 ----------------
 
-A bash completion script is available at
-[`completions/desec.bash`](completions/desec.bash). Distribution packages
-typically install it automatically. When installing manually, copy it to your
-bash-completion completions directory, for example:
+Completion scripts for bash and zsh are available at
+[`completions/desec.bash`](completions/desec.bash) and
+[`completions/_desec`](completions/_desec), respectively. Distribution packages
+typically install them automatically. When installing manually, copy them to your
+completions directories, for example:
 
 ```sh
 install -Dm644 completions/desec.bash /usr/share/bash-completion/completions/desec
+install -Dm644 completions/_desec /usr/share/zsh/site-functions/_desec
 ```
 
-Alternatively, source it from your `~/.bashrc`:
+Alternatively, you can source the bash-completion from your `~/.bashrc`:
 
 ```sh
 source /path/to/completions/desec.bash
