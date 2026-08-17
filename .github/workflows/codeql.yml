@@ -5,11 +5,13 @@ on:
   push:
     paths:
       - '**.py'
+      - '.github/workflows/*.yml'
     branches:
       - main
   pull_request:
     paths:
       - '**.py'
+      - '.github/workflows/*.yml'
     branches:
       - main
   schedule:
