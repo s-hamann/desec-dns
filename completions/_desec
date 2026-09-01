@@ -117,6 +117,8 @@ _desec() {
                     args+=(
                         '--name=[token name]'
                         '--allowed-subnets[IPv4/IPv6 addresses or subnets from which clients may authenticate with this token]'
+                        '--max-age[maximum token age]: '
+                        '--max-unused-period[maximum allowed time period of disuse without invalidating the token]: '
                     )
                     ;|
                 create-token)
