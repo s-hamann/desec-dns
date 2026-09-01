@@ -90,12 +90,13 @@ _desec()
     case "$action" in
         create-token)
             opts="--name --manage-tokens --create-domain --delete-domain \
-                --allowed-subnets --auto-policy"
+                --allowed-subnets --auto-policy --max-age --max-unused-period"
             ;;
         modify-token)
             opts="--name --manage-tokens --no-manage-tokens --create-domain \
                 --no-create-domain --delete-domain --no-delete-domain \
-                --allowed-subnets --auto-policy --no-auto-policy"
+                --allowed-subnets --auto-policy --no-auto-policy --max-age \
+                --max-unused-period"
             ;;
         add-token-policy)
             opts="--domain -t --type -s --subname --write"
