@@ -173,6 +173,11 @@ def main() -> None:
         action="store_true",
         help="automatically set up a permissive policy for any domains created with this token",
     )
+    p.add_argument("--max-age", help="maximum token age (format: [DD] [HH:[MM:]]ss[.uuuuuu])")
+    p.add_argument(
+        "--max-unused-period",
+        help="maximum allowed time period of disuse without invalidating the token (format: [DD] [HH:[MM:]]ss[.uuuuuu])",
+    )
 
     p = p_action.add_parser("modify-token", help="modify an existing authentication token")
     p.add_argument("id", help="token id")
@@ -235,6 +240,16 @@ def main() -> None:
         action="store_false",
         default=None,
         help="do not automatically set up a policy for any domains created with this token",
+    )
+    p.add_argument(
+        "--max-age",
+        default=False,
+        help="maximum token age (format: [DD] [HH:[MM:]]ss[.uuuuuu]), empty string clears the value",
+    )
+    p.add_argument(
+        "--max-unused-period",
+        default=False,
+        help="maximum allowed time period of disuse without invalidating the token (format: [DD] [HH:[MM:]]ss[.uuuuuu]), empty string clears the value",
     )
 
     p = p_action.add_parser("delete-token", help="delete an authentication token")
@@ -632,10 +647,17 @@ def main() -> None:
                 arguments.delete_domain,
                 arguments.allowed_subnets,
                 arguments.auto_policy,
+                arguments.max_age,
+                arguments.max_unused_period,
             )
             print(new_token_result["token"])
 
         elif arguments.action == "modify-token":
+            if arguments.max_age == "":
+                arguments.max_age = None
+            if arguments.max_unused_period == "":
+                arguments.max_unused_period = None
+
             token_result = api_client.modify_token(
                 arguments.id,
                 arguments.name,
@@ -644,6 +666,8 @@ def main() -> None:
                 arguments.delete_domain,
                 arguments.allowed_subnets,
                 arguments.auto_policy,
+                arguments.max_age,
+                arguments.max_unused_period,
             )
             pprint(token_result)
 
