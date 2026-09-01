@@ -29,6 +29,10 @@ def test_list_tokens(api_client):
         {"allowed_subnets": None},
         {"auto_policy": True},
         {"auto_policy": False},
+        {"max_age": "00:10:00"},
+        {"max_age": None},
+        {"max_unused_period": "00:10:00"},
+        {"max_unused_period": None},
     ],
     ids=[
         "simple",
@@ -43,6 +47,10 @@ def test_list_tokens(api_client):
         "all_subnets",
         "auto_policy",
         "no_auto_policy",
+        "max_age",
+        "no_max_age",
+        "max_unused_period",
+        "no_max_unused_period",
     ],
 )
 def test_create_token(request, api_client, new_token_params):
@@ -95,6 +103,10 @@ def test_create_token(request, api_client, new_token_params):
         {"allowed_subnets": ["192.0.2.0/24", "2001:db8::/32"]},
         {"auto_policy": True},
         {"auto_policy": False},
+        {"max_age": "00:10:00"},
+        {"max_age": None},
+        {"max_unused_period": "00:10:00"},
+        {"max_unused_period": None},
     ],
     ids=[
         "simple",
@@ -108,6 +120,10 @@ def test_create_token(request, api_client, new_token_params):
         "restricted_subnets",
         "auto_policy",
         "no_auto_policy",
+        "max_age",
+        "no_max_age",
+        "max_unused_period",
+        "no_max_unused_period",
     ],
 )
 def test_modify_token(api_client, new_token, changed_token_params):
@@ -120,6 +136,8 @@ def test_modify_token(api_client, new_token, changed_token_params):
         "create_domain": not changed_token_params.get("create_domain", True),
         "delete_domain": not changed_token_params.get("delete_domain", True),
         "auto_policy": not changed_token_params.get("auto_policy", True),
+        "max_age": "00:01:00",
+        "max_unused_period": "00:01:00",
     }
     token = new_token(**new_token_params)
 

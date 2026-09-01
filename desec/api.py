@@ -332,6 +332,8 @@ class APIClient:
         delete_domain: bool | None = None,
         allowed_subnets: list[str] | None = None,
         auto_policy: bool | None = None,
+        max_age: str | None = None,
+        max_unused_period: str | None = None,
     ) -> desec.types.JsonTokenSecretType:
         """Create a new authentication token.
 
@@ -348,6 +350,9 @@ class APIClient:
             allowed_subnets: Set the "allowed_subnets" attribute of the new token to this
                 value.
             auto_policy: Set the "auto_policy" attribute of the new token to this value.
+            max_age: Set the "max_age" attribute of the nre token to this value.
+            max_unused_period: Set the "max_unused_period" attribute of the nre token to
+                this value.
 
         Returns:
             A dictionary containing all metadata of the newly created token as well as the
@@ -363,7 +368,7 @@ class APIClient:
         """
         url = f"{API_BASE_URL}/auth/tokens/"
         request_data: desec.types.JsonGenericType
-        request_data = {"name": name}
+        request_data = {"name": name, "max_age": max_age, "max_unused_period": max_unused_period}
         if manage_tokens is not None:
             request_data["perm_manage_tokens"] = manage_tokens
         if create_domain is not None:
@@ -386,6 +391,8 @@ class APIClient:
         delete_domain: bool | None = None,
         allowed_subnets: list[str] | None = None,
         auto_policy: bool | None = None,
+        max_age: str | None | t.Literal[False] = False,
+        max_unused_period: str | None | t.Literal[False] = False,
     ) -> desec.types.JsonTokenType:
         """Modify an existing authentication token.
 
@@ -403,6 +410,10 @@ class APIClient:
             allowed_subnets: Set the "allowed_subnets" attribute of the target token to this
                 value.
             auto_policy: Set the "auto_policy" attribute of the target token to this value.
+            max_age: Set the "max_age" attribute of the nre token to this value. `False`
+                leaves the value unchanged.
+            max_unused_period: Set the "max_unused_period" attribute of the nre token to
+                this value. `False` leaves the value unchanged.
 
         Returns:
             A dictionary containing all metadata of the changed token, not including the
@@ -431,6 +442,10 @@ class APIClient:
             request_data["allowed_subnets"] = allowed_subnets
         if auto_policy is not None:
             request_data["auto_policy"] = auto_policy
+        if max_age is not False:
+            request_data["max_age"] = max_age
+        if max_unused_period is not False:
+            request_data["max_unused_period"] = max_unused_period
         data = self.query("PATCH", url, request_data)
         return t.cast("desec.types.JsonTokenType", data)
 
