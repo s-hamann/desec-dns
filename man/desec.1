@@ -112,6 +112,17 @@ May be given multiple times.
 .B \-\-auto\-policy
 Automatically set up a permissive policy for any domains created with this
 token.
+.TP
+.BI \-\-max\-age " DURATION"
+Maximum token age. When set, the token gets invalidated this interval after its
+creation. Must be formatted as
+.IR "[DD] [HH:[MM:]]ss[.uuuuuu]" .
+.TP
+.BI \-\-max\-unused\-period " DURATION"
+Maximum allowed time period of disuse without invalidating the token. When set,
+the token gets invalidated this duration after its last use. Must be formatted
+as
+.IR "[DD] [HH:[MM:]]ss[.uuuuuu]" .
 .RE
 .TP
 .BI "modify\-token " "id [options]"
@@ -140,6 +151,19 @@ May be given multiple times.
 .BR \-\-auto\-policy ", " \-\-no\-auto\-policy
 Enable or disable automatically setting up a permissive policy for any domains
 created with this token.
+.TP
+.BI \-\-max\-age " DURATION"
+Maximum token age. When set, the token gets invalidated this interval after its
+creation. Must be formatted as
+.IR "[DD] [HH:[MM:]]ss[.uuuuuu]" .
+The empty string removes a previously set duration.
+.TP
+.BI \-\-max\-unused\-period " DURATION"
+Maximum allowed time period of disuse without invalidating the token. When set,
+the token gets invalidated this duration after its last use. Must be formatted
+as
+.IR "[DD] [HH:[MM:]]ss[.uuuuuu]" .
+The empty string removes a previously set duration.
 .RE
 .TP
 .BI "delete\-token " id
