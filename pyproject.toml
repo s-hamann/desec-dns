@@ -18,6 +18,8 @@ include = [
     { path = "completions/desec.bash", format = "sdist" },
     { path = "completions/_desec", format = "sdist" },
     { path = "man/desec.1", format = "sdist" },
+    { path = "tests", format = "sdist" },
+    { path = "tox.ini", format = "sdist" },
 ]
 
 [tool.poetry.urls]
