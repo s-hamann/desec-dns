@@ -13,6 +13,24 @@ Similarly, the project's dependencies are not part of the public API and may
 change on minor version bumps. This, too, will be noted as a breaking change in
 this file.
 
+## [1.5.0] - 2026-09-05
+
+### Breaking Changes
+* The behaviour of token files that are marked as executable changed. Remove
+  the executable file system permission bit from any token file to keep
+  previous behaviour.
+
+### New Features
+* The deSEC authentication token can now be obtained from a script. If the file
+  referenced by the command line parameter `--token-file` has the executable
+  bit set, it is run and its output is used as the token.
+* Token expiration (`max_age` and `max_unused_duration`) can now be set when
+  creating or modifying a token.
+* Add man page for desec CLI tool
+* Add bash completion
+* Add zsh completion
+* Add tests and tox.ini to sdist archive
+
 ## [1.4.0] - 2026-04-01
 
 ### Breaking Changes
@@ -73,6 +91,7 @@ this file.
 
 * First versioned release
 
+[1.5.0]: https://github.com/s-hamann/desec-dns/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/s-hamann/desec-dns/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/s-hamann/desec-dns/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/s-hamann/desec-dns/compare/v1.1.0...v1.2.0
